@@ -30,13 +30,22 @@ def calculate_monthly_plan(plan_data, selected_month, work_days):
         if selected_month not in plan_data.columns:
             st.error(f"Seçilen ay ({selected_month}) bulunamadı.")
             return None
+        
+        # Sütunun veri türünü kontrol et ve dönüştür
+        plan_data[selected_month] = pd.to_numeric(plan_data[selected_month], errors="coerce")
+        
+        # Eğer sütun tamamen NaN ise, hata göster
+        if plan_data[selected_month].isna().all():
+            st.error(f"Seçilen ay ({selected_month}) sütunundaki tüm veriler geçersiz.")
+            return None
+        
+        # Günlük hedefi ve kalan hedefi hesapla
         plan_data["gunluk_hedef"] = plan_data[selected_month] / (work_days / 12)
         plan_data["kalan_hedef"] = plan_data[selected_month]
         return plan_data
     except Exception as e:
         st.error(f"Aylık planlama hatası: {e}")
         return None
-
 
 # Günlük üretim planını oluşturma
 def generate_daily_plan(plan_data, daily_target, tip_degisim_suresi):
