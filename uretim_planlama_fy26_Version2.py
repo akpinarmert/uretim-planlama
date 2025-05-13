@@ -18,8 +18,12 @@ if kapasite_file and aylik_plan_file:
         # FY26 Aylık Üretim Planını Yükle
         aylik_plan_data = pd.read_excel(aylik_plan_file)
 
-        # Sütun başlıklarını temizle (boşlukları ve büyük/küçük harf farklarını gider)
-        aylik_plan_data.columns = aylik_plan_data.columns.str.strip().str.lower()
+        # Sütun başlıklarını temizle (boşlukları ve özel karakterleri gider)
+        aylik_plan_data.columns = (
+            aylik_plan_data.columns.str.strip()  # Başındaki/sonundaki boşlukları kaldır
+            .str.replace("\xa0", " ")  # Görünmez boşluk karakterlerini normal boşlukla değiştir
+            .str.lower()  # Küçük harfe çevir
+        )
 
         # Çalışma Günü Ayarları
         st.sidebar.header("Çalışma Günü Ayarları")
