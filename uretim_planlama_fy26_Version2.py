@@ -24,6 +24,11 @@ if kapasite_file and aylik_plan_file:
             .str.replace("\xa0", " ")
             .str.lower()
         )
+        moduller_data.columns = (
+            moduller_data.columns.str.strip()
+            .str.replace("\xa0", " ")
+            .str.lower()
+        )
 
         # Çalışma Günü Ayarları
         st.sidebar.header("Çalışma Günü Ayarları")
@@ -51,64 +56,38 @@ if kapasite_file and aylik_plan_file:
         if select_month not in aylik_plan_data.columns:
             st.error(f"Seçilen ay ({select_month}) Excel dosyasında bulunamadı. Mevcut sütunlar: {list(aylik_plan_data.columns)}")
         else:
+            # Aylık Planlama
             aylik_plan_data["günlük hedef"] = aylik_plan_data[select_month] / (work_days / 12)
             aylik_plan_data["kalan hedef"] = aylik_plan_data[select_month]
-
-            st.subheader(f"{select_month.capitalize()} Aylık Üretim Planı")
-            st.dataframe(aylik_plan_data[["ürün kodu", "ürün tanımı", select_month, "günlük hedef"]])
 
             # Günlük Planlama
             st.header("Günlük Üretim Planı")
             selected_date = st.date_input("Planlama Tarihi Seçin", value=pd.Timestamp.today())
 
-            # Günlük üretim planı
-            daily_plan = []
-            remaining_target = daily_target
-            sorted_products = aylik_plan_data.sort_values(by="kalan hedef", ascending=False)
+            # 1. Vardiya Hesaplaması
+            moduller_data["1. vardiyada üretim"] = moduller_data["c sütunu"] * moduller_data["d sütunu"]
+            moduller_data["kalan üretim"] = moduller_data["c sütunu"] - moduller_data["1. vardiyada üretim"]
 
-            last_product_type = None
-            total_changeover_time = 0
+            # 2. Vardiya Planlaması
+            st.header("2. Vardiya Planı")
+            second_shift_plan = []
 
-            for _, row in sorted_products.iterrows():
-                if remaining_target <= 0:
-                    break
+            for _, modül in moduller_data.iterrows():
+                kalan_uretim = modül["kalan üretim"]
+                max_operator = modül["b sütunu"]
 
-                cihaz_kodu = row["ürün kodu"]
-                cihaz_tanimi = row["ürün tanımı"]
-                kalan_hedef = row["kalan hedef"]
+                # 2. vardiyadaki operatörlerin iş dağılımını hesapla
+                if kalan_uretim > 0:
+                    operator_time = (kalan_uretim / max_operator) * 60  # dakika cinsinden
+                    second_shift_plan.append({
+                        "Modül": modül["a sütunu"],
+                        "Gerekli Operatör Sayısı": max_operator,
+                        "Operatör Başına Çalışma Süresi (dk)": operator_time
+                    })
 
-                if kalan_hedef <= 0:
-                    continue
-
-                # Tip değişikliği kontrolü
-                if last_product_type and last_product_type != cihaz_kodu:
-                    total_changeover_time += tip_degisim_suresi
-
-                # Üretim miktarını hesapla
-                produce_count = min(remaining_target, kalan_hedef)
-                remaining_target -= produce_count
-                aylik_plan_data.loc[_, "kalan hedef"] -= produce_count
-
-                daily_plan.append({
-                    "Ürün Kodu": cihaz_kodu,
-                    "Ürün Tanımı": cihaz_tanimi,
-                    "Üretim Miktarı": produce_count
-                })
-
-                last_product_type = cihaz_kodu
-
-            # Sonuçları Görüntüleme
-            st.subheader("Günlük Üretim Planı ve Tip Değişikliği Süresi")
-            daily_plan_df = pd.DataFrame(daily_plan)
-            st.dataframe(daily_plan_df)
-            st.text(f"Toplam Tip Değişikliği Süresi: {total_changeover_time} dakika")
-
-            # 2. Vardiya Operatörlerini Görüntüleme
-            st.header("2. Vardiya Operatörleri")
-            if "operatörler" in kapasite_data.columns:
-                st.dataframe(kapasite_data[["hat", "operatörler", "vardiya"]])
-            else:
-                st.warning("Operatör bilgisi kapasite dosyasında bulunamadı.")
+            # 2. vardiya planını göster
+            second_shift_df = pd.DataFrame(second_shift_plan)
+            st.dataframe(second_shift_df)
 
     except Exception as e:
         st.error(f"Hata: {e}")
