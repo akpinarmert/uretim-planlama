@@ -18,6 +18,9 @@ if kapasite_file and aylik_plan_file:
         # FY26 Aylık Üretim Planını Yükle
         aylik_plan_data = pd.read_excel(aylik_plan_file)
 
+        # Sütun başlıklarını temizle (boşlukları ve büyük/küçük harf farklarını gider)
+        aylik_plan_data.columns = aylik_plan_data.columns.str.strip().str.lower()
+
         # Çalışma Günü Ayarları
         st.sidebar.header("Çalışma Günü Ayarları")
         work_days = st.sidebar.number_input("Yıllık Çalışma Günü", min_value=1, max_value=365, value=265)
@@ -33,66 +36,70 @@ if kapasite_file and aylik_plan_file:
 
         # FY26 Ay Seçimi
         aylar = [
-            "Eylül 2025", "Ekim 2025", "Kasım 2025", "Aralık 2025", 
-            "Ocak 2026", "Şubat 2026", "Mart 2026", "Nisan 2026", 
-            "Mayıs 2026", "Haziran 2026", "Temmuz 2026", "Ağustos 2026"
+            "eylül 2025", "ekim 2025", "kasım 2025", "aralık 2025", 
+            "ocak 2026", "şubat 2026", "mart 2026", "nisan 2026", 
+            "mayıs 2026", "haziran 2026", "temmuz 2026", "ağustos 2026"
         ]
         st.sidebar.header("FY26 Ay Seçimi")
         select_month = st.sidebar.selectbox("Planlama Yapılacak Ayı Seçin", aylar)
 
         # Seçilen Ay için Üretim Hedeflerini Al
-        aylik_plan_data["Günlük Hedef"] = aylik_plan_data[select_month] / (work_days / 12)
-        st.subheader(f"{select_month} Aylık Üretim Planı")
-        st.dataframe(aylik_plan_data[["Ürün Kodu", "Ürün Tanımı", select_month, "Günlük Hedef"]])
+        if select_month not in aylik_plan_data.columns:
+            st.error(f"Seçilen ay ({select_month}) Excel dosyasında bulunamadı. Mevcut sütunlar: {list(aylik_plan_data.columns)}")
+        else:
+            # Günlük hedefi hesapla
+            aylik_plan_data["günlük hedef"] = aylik_plan_data[select_month] / (work_days / 12)
+            st.subheader(f"{select_month.capitalize()} Aylık Üretim Planı")
+            st.dataframe(aylik_plan_data[["ürün kodu", "ürün tanımı", select_month, "günlük hedef"]])
 
-        # Günlük Planlama
-        st.header("Günlük Üretim Planı")
-        selected_date = st.date_input("Planlama Tarihi Seçin", value=pd.Timestamp.today())
+            # Günlük Planlama
+            st.header("Günlük Üretim Planı")
+            selected_date = st.date_input("Planlama Tarihi Seçin", value=pd.Timestamp.today())
 
-        # Tip Değişikliği Optimizasyonu
-        st.header("Tip Değişikliği Optimizasyonu")
-        daily_plan = []
-        remaining_target = daily_target
+            # Tip Değişikliği Optimizasyonu
+            st.header("Tip Değişikliği Optimizasyonu")
+            daily_plan = []
+            remaining_target = daily_target
 
-        # Ürünleri, modüllerdeki üretim kapasitesine göre sıralayın
-        sorted_products = aylik_plan_data.sort_values(by="Günlük Hedef", ascending=False)
+            # Ürünleri, günlük hedefe göre sıralayın
+            sorted_products = aylik_plan_data.sort_values(by="günlük hedef", ascending=False)
 
-        last_product_type = None
-        total_changeover_time = 0
+            last_product_type = None
+            total_changeover_time = 0
 
-        for _, row in sorted_products.iterrows():
-            if remaining_target <= 0:
-                break
+            for _, row in sorted_products.iterrows():
+                if remaining_target <= 0:
+                    break
 
-            cihaz_kodu = row["Ürün Kodu"]
-            cihaz_tanimi = row["Ürün Tanımı"]
-            gunluk_hedef = row["Günlük Hedef"]
+                cihaz_kodu = row["ürün kodu"]
+                cihaz_tanimi = row["ürün tanımı"]
+                gunluk_hedef = row["günlük hedef"]
 
-            if gunluk_hedef <= 0:
-                continue
+                if gunluk_hedef <= 0:
+                    continue
 
-            # Tip değişikliği kontrolü
-            if last_product_type and last_product_type != cihaz_kodu:
-                total_changeover_time += tip_degisim_suresi
+                # Tip değişikliği kontrolü
+                if last_product_type and last_product_type != cihaz_kodu:
+                    total_changeover_time += tip_degisim_suresi
 
-            # Günlük üretim hedefinden eksilt
-            produce_count = min(remaining_target, gunluk_hedef)
-            remaining_target -= produce_count
+                # Günlük üretim hedefinden eksilt
+                produce_count = min(remaining_target, gunluk_hedef)
+                remaining_target -= produce_count
 
-            daily_plan.append({
-                "Ürün Kodu": cihaz_kodu,
-                "Ürün Tanımı": cihaz_tanimi,
-                "Üretim Miktarı": produce_count
-            })
+                daily_plan.append({
+                    "Ürün Kodu": cihaz_kodu,
+                    "Ürün Tanımı": cihaz_tanimi,
+                    "Üretim Miktarı": produce_count
+                })
 
-            last_product_type = cihaz_kodu
+                last_product_type = cihaz_kodu
 
-        # Sonuçları Görüntüleme
-        st.subheader("Günlük Üretim Planı ve Tip Değişikliği Süresi")
-        daily_plan_df = pd.DataFrame(daily_plan)
-        st.dataframe(daily_plan_df)
+            # Sonuçları Görüntüleme
+            st.subheader("Günlük Üretim Planı ve Tip Değişikliği Süresi")
+            daily_plan_df = pd.DataFrame(daily_plan)
+            st.dataframe(daily_plan_df)
 
-        st.text(f"Toplam Tip Değişikliği Süresi: {total_changeover_time} dakika")
+            st.text(f"Toplam Tip Değişikliği Süresi: {total_changeover_time} dakika")
 
     except Exception as e:
         st.error(f"Hata: {e}")
