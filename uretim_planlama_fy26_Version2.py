@@ -12,76 +12,58 @@ aylik_plan_file = st.file_uploader("FY26 Aylık Üretim Planı Excel Dosyasını
 if kapasite_file and aylik_plan_file:
     try:
         # Kapasite Verilerini Yükle
-        kapasite_data = pd.read_excel(kapasite_file, sheet_name="Kapasite")
         moduller_data = pd.read_excel(kapasite_file, sheet_name="Modüller")
-        
-        # FY26 Aylık Üretim Planını Yükle
-        aylik_plan_data = pd.read_excel(aylik_plan_file)
 
-        # Sütun başlıklarını temizle
-        aylik_plan_data.columns = (
-            aylik_plan_data.columns.str.strip()
-            .str.replace("\xa0", " ")
-            .str.lower()
-        )
+        # Sütun başlıklarını normalize et
         moduller_data.columns = (
-            moduller_data.columns.str.strip()
-            .str.replace("\xa0", " ")
-            .str.lower()
+            moduller_data.columns.str.strip()  # Başındaki/sonundaki boşlukları kaldır
+            .str.replace("\xa0", " ")  # Görünmez boşluk karakterlerini normal boşlukla değiştir
+            .str.lower()  # Küçük harfe çevir
+            .str.replace(" ", "_")  # Boşlukları alt çizgiyle değiştir
+            .str.replace("ç", "c")
+            .str.replace("ğ", "g")
+            .str.replace("ı", "i")
+            .str.replace("ö", "o")
+            .str.replace("ş", "s")
+            .str.replace("ü", "u")
         )
-
-        # Çalışma Günü Ayarları
-        st.sidebar.header("Çalışma Günü Ayarları")
-        work_days = st.sidebar.number_input("Yıllık Çalışma Günü", min_value=1, max_value=365, value=265)
-
-        # Günlük Üretim Hedefi
-        daily_target = 1634  # Günlük üretim hedefi
-        st.sidebar.header("Günlük Üretim Hedefi")
-        st.sidebar.text(f"Günlük Üretim Hedefi: {daily_target} adet")
-
-        # Tip Değişikliği Süresi (Dakika)
-        tip_degisim_suresi = 5  # Tip değişikliği süresi sabit olarak 5 dakika
-        st.sidebar.text(f"Tip Değişikliği Süresi: {tip_degisim_suresi} dakika")
-
-        # FY26 Ay Seçimi
-        aylar = [
-            "eylül 2025", "ekim 2025", "kasım 2025", "aralık 2025", 
-            "ocak 2026", "şubat 2026", "mart 2026", "nisan 2026", 
-            "mayıs 2026", "haziran 2026", "temmuz 2026", "ağustos 2026"
+        
+        # Beklenen sütun başlıklarını kontrol et
+        expected_columns = [
+            "moduller", 
+            "calisabilir_operator_sayisi", 
+            "yillik_calisma_gunu", 
+            "gunluk_istenen_uretim_(pol)", 
+            "calisabilir_vardiya_sayisi"
         ]
-        st.sidebar.header("FY26 Ay Seçimi")
-        select_month = st.sidebar.selectbox("Planlama Yapılacak Ayı Seçin", aylar)
-
-        # Seçilen Ay için Üretim Hedeflerini Al
-        if select_month not in aylik_plan_data.columns:
-            st.error(f"Seçilen ay ({select_month}) Excel dosyasında bulunamadı. Mevcut sütunlar: {list(aylik_plan_data.columns)}")
+        missing_columns = [col for col in expected_columns if col not in moduller_data.columns]
+        
+        if missing_columns:
+            st.error(f"Excel dosyasındaki sütun başlıkları beklenen formatta değil. Eksik sütunlar: {missing_columns}")
         else:
-            # Aylık Planlama
-            aylik_plan_data["günlük hedef"] = aylik_plan_data[select_month] / (work_days / 12)
-            aylik_plan_data["kalan hedef"] = aylik_plan_data[select_month]
+            st.success("Excel dosyası başarıyla yüklendi ve sütun başlıkları doğrulandı.")
+            
+            # Modüller ve üretim hedeflerini göster
+            st.subheader("Modüller ve Üretim Hedefleri")
+            st.dataframe(moduller_data)
 
-            # Günlük Planlama
-            st.header("Günlük Üretim Planı")
-            selected_date = st.date_input("Planlama Tarihi Seçin", value=pd.Timestamp.today())
-
-            # 1. Vardiya Hesaplaması
-            moduller_data["1. vardiyada üretim"] = moduller_data["c sütunu"] * moduller_data["d sütunu"]
-            moduller_data["kalan üretim"] = moduller_data["c sütunu"] - moduller_data["1. vardiyada üretim"]
-
-            # 2. Vardiya Planlaması
-            st.header("2. Vardiya Planı")
+            # 2. vardiya planını oluştur
+            st.subheader("2. Vardiya Planı")
             second_shift_plan = []
 
             for _, modül in moduller_data.iterrows():
-                kalan_uretim = modül["kalan üretim"]
-                max_operator = modül["b sütunu"]
-
-                # 2. vardiyadaki operatörlerin iş dağılımını hesapla
-                if kalan_uretim > 0:
-                    operator_time = (kalan_uretim / max_operator) * 60  # dakika cinsinden
+                max_operator = modül["calisabilir_operator_sayisi"]
+                daily_goal = modül["gunluk_istenen_uretim_(pol)"]
+                shifts_available = modül["calisabilir_vardiya_sayisi"]
+                
+                # 2. vardiyada yapılacak üretim miktarını hesapla
+                if shifts_available > 1:  # En az 2 vardiya çalışabilen modüller
+                    second_shift_goal = daily_goal / shifts_available
+                    operator_time = (second_shift_goal / max_operator) * 60  # dakika cinsinden
                     second_shift_plan.append({
-                        "Modül": modül["a sütunu"],
+                        "Modül": modül["moduller"],
                         "Gerekli Operatör Sayısı": max_operator,
+                        "2. Vardiya Üretim Hedefi": second_shift_goal,
                         "Operatör Başına Çalışma Süresi (dk)": operator_time
                     })
 
