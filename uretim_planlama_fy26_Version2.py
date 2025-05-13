@@ -53,20 +53,22 @@ if kapasite_file and aylik_plan_file:
         else:
             # Günlük hedefi hesapla
             aylik_plan_data["günlük hedef"] = aylik_plan_data[select_month] / (work_days / 12)
+
             st.subheader(f"{select_month.capitalize()} Aylık Üretim Planı")
             st.dataframe(aylik_plan_data[["ürün kodu", "ürün tanımı", select_month, "günlük hedef"]])
 
             # Günlük Planlama
             st.header("Günlük Üretim Planı")
             selected_date = st.date_input("Planlama Tarihi Seçin", value=pd.Timestamp.today())
-
-            # Tip Değişikliği Optimizasyonu
-            st.header("Tip Değişikliği Optimizasyonu")
+            
+            # Her gün için dinamik üretim planı yap
             daily_plan = []
             remaining_target = daily_target
-
-            # Ürünleri, günlük hedefe göre sıralayın
             sorted_products = aylik_plan_data.sort_values(by="günlük hedef", ascending=False)
+
+            # Aylık üretim planını takip etmek için kalan hedef sütunu ekle
+            if "kalan hedef" not in aylik_plan_data.columns:
+                aylik_plan_data["kalan hedef"] = aylik_plan_data[select_month]
 
             last_product_type = None
             total_changeover_time = 0
@@ -79,16 +81,17 @@ if kapasite_file and aylik_plan_file:
                 cihaz_tanimi = row["ürün tanımı"]
                 gunluk_hedef = row["günlük hedef"]
 
-                if gunluk_hedef <= 0:
+                if aylik_plan_data.loc[_, "kalan hedef"] <= 0:
                     continue
 
                 # Tip değişikliği kontrolü
                 if last_product_type and last_product_type != cihaz_kodu:
                     total_changeover_time += tip_degisim_suresi
 
-                # Günlük üretim hedefinden eksilt
-                produce_count = min(remaining_target, gunluk_hedef)
+                # Üretim miktarını hesapla
+                produce_count = min(remaining_target, aylik_plan_data.loc[_, "kalan hedef"])
                 remaining_target -= produce_count
+                aylik_plan_data.loc[_, "kalan hedef"] -= produce_count
 
                 daily_plan.append({
                     "Ürün Kodu": cihaz_kodu,
@@ -102,8 +105,14 @@ if kapasite_file and aylik_plan_file:
             st.subheader("Günlük Üretim Planı ve Tip Değişikliği Süresi")
             daily_plan_df = pd.DataFrame(daily_plan)
             st.dataframe(daily_plan_df)
-
             st.text(f"Toplam Tip Değişikliği Süresi: {total_changeover_time} dakika")
+
+            # 2. Vardiya Operatörlerini Görüntüleme
+            st.header("2. Vardiya Operatörleri")
+            if "operatörler" in kapasite_data.columns:
+                st.dataframe(kapasite_data[["hat", "operatörler", "vardiya"]])
+            else:
+                st.warning("Operatör bilgisi kapasite dosyasında bulunamadı.")
 
     except Exception as e:
         st.error(f"Hata: {e}")
