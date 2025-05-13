@@ -25,31 +25,35 @@ def load_and_clean_data(file_path, sheet_name):
 
 
 # Aylık üretim planını hesaplama
-def calculate_monthly_plan(plan_data, work_days):
+def calculate_monthly_plan(plan_data, selected_month, work_days):
     try:
-        # Ay sütunlarını belirle (C sütunundan itibaren)
-        month_columns = plan_data.columns[2:]  # İlk iki sütun cihaz kodları ve açıklamalar için ayrılmış
-        
-        # Aylar ve üretim miktarlarını kontrol et
-        for month in month_columns:
-            plan_data[month] = pd.to_numeric(plan_data[month], errors="coerce")
+        # Sütun başlıklarını kontrol et
+        if selected_month not in plan_data.columns:
+            st.error(f"Seçilen ay ({selected_month}) bulunamadı.")
+            return None
+
+        # Seçilen ay sütunundaki verileri sayısal türe dönüştür
+        plan_data[selected_month] = pd.to_numeric(plan_data[selected_month], errors="coerce")
 
         # Geçersiz verileri kontrol et
-        invalid_data = plan_data[plan_data[month_columns].isna().any(axis=1)]
-        if not invalid_data.empty:
-            st.warning("Aşağıdaki satırlarda geçersiz veriler var. Lütfen Excel dosyasını kontrol edin:")
-            st.dataframe(invalid_data)
+        invalid_rows = plan_data[plan_data[selected_month].isna()]
+        if not invalid_rows.empty:
+            st.warning(f"Seçilen ay ({selected_month}) sütununda geçersiz veriler mevcut. Lütfen kontrol edin:")
+            st.dataframe(invalid_rows)
 
-        # Eğer tüm sütunlar geçerli ise günlük hedefleri hesapla
-        for month in month_columns:
-            plan_data[f"gunluk_hedef_{month}"] = plan_data[month] / (work_days / 12)
-            plan_data[f"kalan_hedef_{month}"] = plan_data[month]
+        # Eğer sütun tamamen NaN ise hata göster
+        if plan_data[selected_month].isna().all():
+            st.error(f"Seçilen ay ({selected_month}) sütunundaki tüm veriler geçersiz. Lütfen Excel dosyasını kontrol edin.")
+            return None
+
+        # Günlük üretim hedeflerini hesapla
+        plan_data["gunluk_hedef"] = plan_data[selected_month] / (work_days / 12)
+        plan_data["kalan_hedef"] = plan_data[selected_month]
 
         return plan_data
     except Exception as e:
         st.error(f"Aylık planlama hatası: {e}")
         return None
-
 # Günlük üretim planını oluşturma
 def generate_daily_plan(plan_data, daily_target, tip_degisim_suresi):
     daily_plan = []
