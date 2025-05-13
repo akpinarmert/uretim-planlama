@@ -18,11 +18,11 @@ if kapasite_file and aylik_plan_file:
         # FY26 Aylık Üretim Planını Yükle
         aylik_plan_data = pd.read_excel(aylik_plan_file)
 
-        # Sütun başlıklarını temizle (boşlukları ve özel karakterleri gider)
+        # Sütun başlıklarını temizle
         aylik_plan_data.columns = (
-            aylik_plan_data.columns.str.strip()  # Başındaki/sonundaki boşlukları kaldır
-            .str.replace("\xa0", " ")  # Görünmez boşluk karakterlerini normal boşlukla değiştir
-            .str.lower()  # Küçük harfe çevir
+            aylik_plan_data.columns.str.strip()
+            .str.replace("\xa0", " ")
+            .str.lower()
         )
 
         # Çalışma Günü Ayarları
@@ -51,8 +51,8 @@ if kapasite_file and aylik_plan_file:
         if select_month not in aylik_plan_data.columns:
             st.error(f"Seçilen ay ({select_month}) Excel dosyasında bulunamadı. Mevcut sütunlar: {list(aylik_plan_data.columns)}")
         else:
-            # Günlük hedefi hesapla
             aylik_plan_data["günlük hedef"] = aylik_plan_data[select_month] / (work_days / 12)
+            aylik_plan_data["kalan hedef"] = aylik_plan_data[select_month]
 
             st.subheader(f"{select_month.capitalize()} Aylık Üretim Planı")
             st.dataframe(aylik_plan_data[["ürün kodu", "ürün tanımı", select_month, "günlük hedef"]])
@@ -60,15 +60,11 @@ if kapasite_file and aylik_plan_file:
             # Günlük Planlama
             st.header("Günlük Üretim Planı")
             selected_date = st.date_input("Planlama Tarihi Seçin", value=pd.Timestamp.today())
-            
-            # Her gün için dinamik üretim planı yap
+
+            # Günlük üretim planı
             daily_plan = []
             remaining_target = daily_target
-            sorted_products = aylik_plan_data.sort_values(by="günlük hedef", ascending=False)
-
-            # Aylık üretim planını takip etmek için kalan hedef sütunu ekle
-            if "kalan hedef" not in aylik_plan_data.columns:
-                aylik_plan_data["kalan hedef"] = aylik_plan_data[select_month]
+            sorted_products = aylik_plan_data.sort_values(by="kalan hedef", ascending=False)
 
             last_product_type = None
             total_changeover_time = 0
@@ -79,9 +75,9 @@ if kapasite_file and aylik_plan_file:
 
                 cihaz_kodu = row["ürün kodu"]
                 cihaz_tanimi = row["ürün tanımı"]
-                gunluk_hedef = row["günlük hedef"]
+                kalan_hedef = row["kalan hedef"]
 
-                if aylik_plan_data.loc[_, "kalan hedef"] <= 0:
+                if kalan_hedef <= 0:
                     continue
 
                 # Tip değişikliği kontrolü
@@ -89,7 +85,7 @@ if kapasite_file and aylik_plan_file:
                     total_changeover_time += tip_degisim_suresi
 
                 # Üretim miktarını hesapla
-                produce_count = min(remaining_target, aylik_plan_data.loc[_, "kalan hedef"])
+                produce_count = min(remaining_target, kalan_hedef)
                 remaining_target -= produce_count
                 aylik_plan_data.loc[_, "kalan hedef"] -= produce_count
 
