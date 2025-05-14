@@ -23,11 +23,11 @@ def load_plan_file(uploaded_file):
         st.error(f"FY26 Plan dosyasını okurken bir hata oluştu: {e}")
         return None
 
-def analyze_data(df_plan, df_kapasite):
+def analyze_data(df_plan, df_kapasite, calisma_gunu, vardiyalar):
     try:
         combined_data = pd.merge(df_plan, df_kapasite, on="cihaz_kodu", how="inner")
         
-        # Modül sıralaması ve analiz
+        # Modül sıralaması
         moduller = [
             "bireysel_montaj",
             "on_ayar_kapama",
@@ -37,32 +37,40 @@ def analyze_data(df_plan, df_kapasite):
             "paketleme",
             "muhurleme"
         ]
-        
+
+        # Modül bazlı analiz sonuçları
+        modül_sonuclari = {}
+
         for index, modul in enumerate(moduller):
             if modul in combined_data.columns:
-                if index == 0:
-                    combined_data[f"{modul}_sure_saat"] = combined_data.apply(
-                        lambda row: (
-                            row["Eylül 2025"] / row[modul]
-                            if pd.notna(row[modul]) and row[modul] != 0
-                            else "Üretilmiyor"
-                        ),
-                        axis=1
-                    )
-                else:
-                    onceki_modul = moduller[index - 1]
-                    combined_data[f"{modul}_sure_saat"] = combined_data.apply(
-                        lambda row: (
-                            row[f"{onceki_modul}_sure_saat"] + (row["Eylül 2025"] / row[modul])
-                            if pd.notna(row[modul]) and row[modul] != 0 and row[f"{onceki_modul}_sure_saat"] != "Üretilmiyor"
-                            else "Üretilmiyor"
-                        ),
-                        axis=1
-                    )
-        return combined_data
+                # Tip bazlı harcanacak süre (dakika cinsinden)
+                combined_data[f"{modul}_sure_dakika"] = combined_data.apply(
+                    lambda row: (
+                        (row["Eylül 2025"] / row[modul]) * 60
+                        if pd.notna(row[modul]) and row[modul] != 0
+                        else 0
+                    ),
+                    axis=1
+                )
+                
+                # Modülün toplam yıllık çalışma kapasitesi (dakika cinsinden)
+                toplam_kapasite_dakika = calisma_gunu * vardiyalar[index] * 8 * 60
+                
+                # Modülün toplam doluluk oranı
+                toplam_harcanan_sure = combined_data[f"{modul}_sure_dakika"].sum()
+                doluluk_orani = (toplam_harcanan_sure / toplam_kapasite_dakika) * 100
+                
+                # Analiz sonuçlarını kaydet
+                modül_sonuclari[modul] = {
+                    "toplam_harcanan_sure": toplam_harcanan_sure,
+                    "toplam_kapasite_dakika": toplam_kapasite_dakika,
+                    "doluluk_orani": doluluk_orani
+                }
+        
+        return combined_data, modül_sonuclari
     except Exception as e:
         st.error(f"Analiz sırasında bir hata oluştu: {e}")
-        return None
+        return None, None
 
 # Sayfa başlıkları ve yönlendirme
 st.set_page_config(page_title="Üretim Planlama Dashboard", layout="wide")
@@ -76,6 +84,9 @@ if "df_plan" not in st.session_state:
 
 if "combined_data" not in st.session_state:
     st.session_state.combined_data = None
+
+if "modul_sonuclari" not in st.session_state:
+    st.session_state.modul_sonuclari = None
 
 # Sayfa seçimi
 st.sidebar.title("Navigasyon")
@@ -110,26 +121,36 @@ if page == "Dashboard":
             st.write("FY26 Plan dosyasının ilk 5 satırı:")
             st.dataframe(st.session_state.df_plan.head())
     
+    # Çalışma günü ve vardiya bilgileri
+    st.sidebar.header("Çalışma Ayarları")
+    calisma_gunu = st.sidebar.number_input("Yıllık Çalışma Günü", min_value=1, max_value=365, value=265)
+    vardiyalar = st.sidebar.text_input(
+        "Günlük Çalışılabilir Vardiyalar (Virgülle ayırın)", 
+        value="2,2,2,2,2,2,1"
+    )
+    vardiyalar = list(map(int, vardiyalar.split(",")))
+    
     # Analiz durumunu kontrol et
     if st.session_state.df_kapasite is not None and st.session_state.df_plan is not None:
-        st.session_state.combined_data = analyze_data(st.session_state.df_plan, st.session_state.df_kapasite)
+        st.session_state.combined_data, st.session_state.modul_sonuclari = analyze_data(
+            st.session_state.df_plan, 
+            st.session_state.df_kapasite, 
+            calisma_gunu, 
+            vardiyalar
+        )
         st.success("Analiz tamamlandı! 'Analiz' sekmesinden sonuçları görüntüleyebilirsiniz.")
 
 elif page == "Analiz":
     # Analiz ekranı
     st.title("Üretim Planlama Analizi")
-    st.subheader("Yüklenen Veriler ve Analiz Sonuçları")
+    st.subheader("Modül Bazlı Harcanacak Süreler ve Doluluk Oranları")
     
     # Analiz sonuçlarını göster
-    if st.session_state.combined_data is not None:
-        st.write("Birleştirilmiş veri seti (ilk 5 satır):")
-        st.dataframe(st.session_state.combined_data.head())
-        
-        # Özet bilgiler
-        st.subheader("Analiz Özeti")
-        st.write("""
-        - Tüm süreler saat cinsinden hesaplanmıştır.
-        - Boş hücreler "Üretilmiyor" olarak değerlendirilmiştir.
-        """)
+    if st.session_state.modul_sonuclari is not None:
+        for modul, sonuc in st.session_state.modul_sonuclari.items():
+            st.subheader(f"{modul.capitalize()} Modülü")
+            st.write(f"Toplam Harcanan Süre: {sonuc['toplam_harcanan_sure']:.2f} dakika")
+            st.write(f"Toplam Kapasite: {sonuc['toplam_kapasite_dakika']:.2f} dakika")
+            st.write(f"Doluluk Oranı: {sonuc['doluluk_orani']:.2f} %")
     else:
         st.warning("Lütfen önce Dashboard ekranından dosyalarınızı yükleyip analiz yapın.")
