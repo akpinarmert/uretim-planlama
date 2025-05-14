@@ -196,60 +196,87 @@ elif page == "Analiz":
             st.write(f"Maksimum Operatör Sayısı: {sonuc['max_operators']}")
     else:
         st.warning("Lütfen önce Dashboard ekranından dosyalarınızı yükleyip analiz yapın.")
-# Yeni Sayfa: Takvim Tabanlı Planlama
+# Takvim Tabanlı Planlama
 elif page == "Takvim Tabanlı Planlama":
     st.title("Takvim Tabanlı Günlük Üretim Planı")
     
     # Takvim seçim arayüzü
     st.subheader("Bir gün seçin:")
-    selected_date = st.date_input("Gün Seçimi")
+    import datetime
+    baslangic_tarihi = datetime.date(2025, 9, 1)  # Eylül 2025 başlangıcı
+    bitis_tarihi = datetime.date(2026, 8, 31)    # Ağustos 2026 sonu
+    
+    selected_date = st.date_input(
+        "Gün Seçimi",
+        value=baslangic_tarihi,  # Varsayılan değer
+        min_value=baslangic_tarihi,  # Minimum tarih
+        max_value=bitis_tarihi  # Maksimum tarih
+    )
     
     if selected_date:
         st.write(f"Seçilen Gün: {selected_date}")
         
-        # Günlük üretim planını optimize etme
-        if st.session_state.df_kapasite is not None and st.session_state.df_plan is not None:
-            from ortools.linear_solver import pywraplp
-            
-            # Optimizasyon Modeli
-            solver = pywraplp.Solver.CreateSolver('SCIP')
-            if not solver:
-                st.error("Optimizasyon kütüphanesi başlatılamadı.")
-            
-            # Cihaz tipleri ve üretim adetleri
-            cihaz_tipleri = st.session_state.df_plan["cihaz_kodu"].unique()
-            uretim_miktarlari = {tip: solver.IntVar(0, 1634, f"miktar_{tip}") for tip in cihaz_tipleri}
-            
-            # Amaç fonksiyonu: Tip değişikliklerini minimize et
-            tip_degisimleri = solver.IntVar(0, len(cihaz_tipleri), "tip_degisimleri")
-            solver.Minimize(tip_degisimleri)
-            
-            # Kısıtlar
-            toplam_uretim = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
-            solver.Add(toplam_uretim == 1634)  # Günlük hedef
-            
-            # Operatör ve modül kapasiteleri
-            for modul in st.session_state.vardiyalar.keys():
-                max_operator = st.session_state.max_operators[modul]
-                calisma_suresi = 383  # Varsayılan dakika
-                solver.Add(
-                    solver.Sum(uretim_miktarlari[tip] / st.session_state.df_kapasite.loc[
-                        st.session_state.df_kapasite["cihaz_kodu"] == tip, modul].values[0]
-                        for tip in cihaz_tipleri if modul in st.session_state.df_kapasite.columns
-                    ) <= max_operator * calisma_suresi
-                )
-            
-            # Çözümü çalıştır
-            status = solver.Solve()
-            if status == pywraplp.Solver.OPTIMAL:
-                st.success("Optimizasyon başarıyla tamamlandı!")
-                st.subheader("Günlük Üretim Planı")
-                for tip in cihaz_tipleri:
-                    miktar = uretim_miktarlari[tip].solution_value()
-                    if miktar > 0:
-                        st.write(f"- Cihaz Tipi: {tip} | Adet: {int(miktar)}")
-                st.write(f"Tip Değişiklik Sayısı: {int(tip_degisimleri.solution_value())}")
+        # Tarihi aya dönüştürme
+        aylar = [
+            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+        ]
+        secilen_ay = f"{aylar[selected_date.month - 1]} {selected_date.year}"
+        st.write(f"Seçilen ay: {secilen_ay}")
+        
+        # Plan dosyasından ayı seçme
+        if st.session_state.df_plan is not None:
+            if secilen_ay in st.session_state.df_plan.columns:
+                st.write(f"'{secilen_ay}' sütunundan veriler çekiliyor...")
+                
+                # Ay verilerini çek
+                plan_verileri = st.session_state.df_plan[["cihaz_kodu", secilen_ay]]
+                
+                # Optimizasyon için "cihaz_kodu" ve miktarları kullan
+                from ortools.linear_solver import pywraplp
+
+                # Optimizasyon Modeli
+                solver = pywraplp.Solver.CreateSolver('SCIP')
+                if not solver:
+                    st.error("Optimizasyon kütüphanesi başlatılamadı.")
+                
+                # Cihaz tipleri ve üretim adetleri
+                cihaz_tipleri = plan_verileri["cihaz_kodu"].unique()
+                uretim_miktarlari = {tip: solver.IntVar(0, 1634, f"miktar_{tip}") for tip in cihaz_tipleri}
+                
+                # Amaç fonksiyonu: Tip değişikliklerini minimize et
+                tip_degisimleri = solver.IntVar(0, len(cihaz_tipleri), "tip_degisimleri")
+                solver.Minimize(tip_degisimleri)
+                
+                # Kısıtlar
+                toplam_uretim = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
+                solver.Add(toplam_uretim == 1634)  # Günlük hedef
+                
+                # Operatör ve modül kapasiteleri
+                for modul in st.session_state.vardiyalar.keys():
+                    max_operator = st.session_state.max_operators[modul]
+                    calisma_suresi = 383  # Varsayılan dakika
+                    solver.Add(
+                        solver.Sum(
+                            uretim_miktarlari[tip] / st.session_state.df_kapasite.loc[
+                                st.session_state.df_kapasite["cihaz_kodu"] == tip, modul].values[0]
+                            for tip in cihaz_tipleri if modul in st.session_state.df_kapasite.columns
+                        ) <= max_operator * calisma_suresi
+                    )
+                
+                # Çözümü çalıştır
+                status = solver.Solve()
+                if status == pywraplp.Solver.OPTIMAL:
+                    st.success("Optimizasyon başarıyla tamamlandı!")
+                    st.subheader("Günlük Üretim Planı")
+                    for tip in cihaz_tipleri:
+                        miktar = uretim_miktarlari[tip].solution_value()
+                        if miktar > 0:
+                            st.write(f"- Cihaz Tipi: {tip} | Adet: {int(miktar)}")
+                    st.write(f"Tip Değişiklik Sayısı: {int(tip_degisimleri.solution_value())}")
+                else:
+                    st.error("Optimizasyon için uygun bir çözüm bulunamadı.")
             else:
-                st.error("Optimizasyon için uygun bir çözüm bulunamadı.")
+                st.warning(f"'{secilen_ay}' sütunu 'FY26 Plan' dosyasında bulunamadı.")
         else:
-            st.warning("Lütfen önce Dashboard ekranından dosyalarınızı yükleyin.")
+            st.warning("Lütfen önce Dashboard ekranından 'FY26 Plan' dosyasını yükleyin.")
