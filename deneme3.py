@@ -113,7 +113,7 @@ if "max_operators" not in st.session_state:
 
 # Sayfa seçimi
 st.sidebar.title("Navigasyon")
-page = st.sidebar.radio("Sayfa Seçimi", ["Dashboard", "Analiz"])
+page = st.sidebar.radio("Sayfa Seçimi", ["Dashboard", "Analiz", "Takvim Tabanlı Planlama"])
 
 if page == "Dashboard":
     # Dashboard ekranı
