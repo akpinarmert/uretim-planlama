@@ -81,24 +81,27 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
         Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili modülün atlanacağını ifade eder.
         """)
 
-        # Modüller için sıralı işlem hesaplaması
-        for index, modul in enumerate(moduller):
-            if modul in combined_data.columns:
-                if index == 0:
-                    # İlk modül herhangi bir bağımlılığa sahip değil
-                    combined_data[f"{modul}_sure"] = combined_data.apply(
-                        lambda row: row["Eylül 2025"] / row[modul] if pd.notna(row[modul]) else 0, axis=1
-                    )
-                else:
-                    # Sonraki modüller önceki modülün tamamlanmasını bekler ve boş hücreleri atlar
-                    onceki_modul = moduller[index - 1]
-                    combined_data[f"{modul}_sure"] = combined_data.apply(
-                        lambda row: row[f"{onceki_modul}_sure"] + (row["Eylül 2025"] / row[modul]) if pd.notna(row[modul]) else row[f"{onceki_modul}_sure"],
-                        axis=1
-                    )
+        or index, modul in enumerate(moduller):
+    if modul in combined_data.columns:
+        if index == 0:
+            # İlk modül herhangi bir bağımlılığa sahip değil
+            combined_data[f"{modul}_sure"] = combined_data.apply(
+                lambda row: row["Eylül 2025"] / row[modul] if pd.notna(row[modul]) and row[modul] != 0 else 0,
+                axis=1
+            )
+        else:
+            # Sonraki modüller önceki modülün tamamlanmasını bekler ve boş hücreleri atlar
+            onceki_modul = moduller[index - 1]
+            combined_data[f"{modul}_sure"] = combined_data.apply(
+                lambda row: row[f"{onceki_modul}_sure"] + (row["Eylül 2025"] / row[modul])
+                if pd.notna(row[modul]) and row[modul] != 0
+                else row[f"{onceki_modul}_sure"],
+                axis=1
+            )
 
-                st.write(f"**{modul}** modülü için işlem süreleri (ilk 5 satır):")
-                st.dataframe(combined_data[["cihaz_kodu", f"{modul}_sure"]].head())
-
+        # Sonuçları yazdır
+        st.write(f"**{modul}** modülü için işlem süreleri (ilk 5 satır):")
+        st.dataframe(combined_data[["cihaz_kodu", f"{modul}_sure"]].head())
+        
     except Exception as e:
         st.error(f"Analiz sırasında bir hata oluştu: {e}")
