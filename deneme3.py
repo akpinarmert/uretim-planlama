@@ -23,7 +23,7 @@ def load_plan_file(uploaded_file):
         st.error(f"FY26 Plan dosyasını okurken bir hata oluştu: {e}")
         return None
 
-def analyze_data(df_plan, df_kapasite, calisma_gunu, vardiyalar):
+def analyze_data(df_plan, df_kapasite, calisma_gunu, vardiyalar, max_operators):
     try:
         combined_data = pd.merge(df_plan, df_kapasite, on="cihaz_kodu", how="inner")
         
@@ -64,7 +64,8 @@ def analyze_data(df_plan, df_kapasite, calisma_gunu, vardiyalar):
                 modül_sonuclari[modul] = {
                     "toplam_harcanan_sure": toplam_harcanan_sure,
                     "toplam_kapasite_dakika": toplam_kapasite_dakika,
-                    "doluluk_orani": doluluk_orani
+                    "doluluk_orani": doluluk_orani,
+                    "max_operators": max_operators[modul]
                 }
         
         return combined_data, modül_sonuclari
@@ -87,6 +88,28 @@ if "combined_data" not in st.session_state:
 
 if "modul_sonuclari" not in st.session_state:
     st.session_state.modul_sonuclari = None
+
+if "vardiyalar" not in st.session_state:
+    st.session_state.vardiyalar = {
+        "bireysel_montaj": 2,
+        "on_ayar_kapama": 2,
+        "termik_ayar": 2,
+        "termik_test": 2,
+        "gruplama_manyetik": 2,
+        "paketleme": 2,
+        "muhurleme": 1
+    }
+
+if "max_operators" not in st.session_state:
+    st.session_state.max_operators = {
+        "bireysel_montaj": 6,
+        "on_ayar_kapama": 2,
+        "termik_ayar": 1,
+        "termik_test": 1,
+        "gruplama_manyetik": 1,
+        "paketleme": 1,
+        "muhurleme": 1
+    }
 
 # Sayfa seçimi
 st.sidebar.title("Navigasyon")
@@ -118,9 +141,17 @@ if page == "Dashboard":
         "paketleme",
         "muhurleme"
     ]
-    vardiyalar = {}
+    
     for modul in moduller:
-        vardiyalar[modul] = st.sidebar.number_input(f"{modul.capitalize()}", min_value=1, max_value=3, value=2 if modul != "muhurleme" else 1)
+        st.session_state.vardiyalar[modul] = st.sidebar.number_input(
+            f"{modul.capitalize()} Vardiya", min_value=1, max_value=3, value=st.session_state.vardiyalar[modul]
+        )
+    
+    st.sidebar.subheader("Modül Bazlı Maksimum Operatör Sayısı")
+    for modul in moduller:
+        st.session_state.max_operators[modul] = st.sidebar.number_input(
+            f"{modul.capitalize()} Operatör", min_value=1, max_value=10, value=st.session_state.max_operators[modul]
+        )
 
     # Dosya yükleme alanları
     st.header("Excel Dosyalarını Yükleyin")
@@ -145,7 +176,8 @@ if page == "Dashboard":
             st.session_state.df_plan, 
             st.session_state.df_kapasite, 
             calisma_gunu, 
-            vardiyalar
+            st.session_state.vardiyalar, 
+            st.session_state.max_operators
         )
         st.success("Analiz tamamlandı! 'Analiz' sekmesinden sonuçları görüntüleyebilirsiniz.")
 
@@ -161,5 +193,6 @@ elif page == "Analiz":
             st.write(f"Toplam Harcanan Süre: {sonuc['toplam_harcanan_sure']:.2f} dakika")
             st.write(f"Toplam Kapasite: {sonuc['toplam_kapasite_dakika']:.2f} dakika")
             st.write(f"Doluluk Oranı: {sonuc['doluluk_orani']:.2f} %")
+            st.write(f"Maksimum Operatör Sayısı: {sonuc['max_operators']}")
     else:
         st.warning("Lütfen önce Dashboard ekranından dosyalarınızı yükleyip analiz yapın.")
