@@ -90,5 +90,4 @@ print("Ürün Kodları:")
 print(urun_kodlari)
 
 print("\nÜrün Tanımları:")
-print(urun)(#)
-
+print(urun)
