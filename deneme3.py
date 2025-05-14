@@ -7,17 +7,26 @@ st.title("Üretim Planlama Programı")
 # Açıklama
 st.write("""
 Bu program, üretim planlaması yapmak için iki Excel dosyasını (FY26 Kapasite ve FY26 Plan) okur ve analiz eder. 
-Ayrıca modüller arasındaki bağımlılıkları gözetir.
+Ayrıca modüller arasındaki bağımlılıkları gözetir ve boş hücreleri bypass eder.
 """)
 
 # Dosya yükleme
 st.header("Excel Dosyalarını Yükleyin")
 
-# FY26 Plan dosyasını yükleme
-import streamlit as st
-import pandas as pd
+# FY26 Kapasite dosyasını yükleme
+uploaded_kapasite = st.file_uploader("FY26 Kapasite dosyasını yükleyin (FPY26 Kapasite.xlsx)", type=["xlsx", "xls"])
+if uploaded_kapasite is not None:
+    try:
+        # "Kapasite" sayfasını oku
+        df_kapasite = pd.read_excel(uploaded_kapasite, sheet_name="Kapasite")
+        st.success("FY26 Kapasite dosyası başarıyla yüklendi!")
+        st.write("Kapasite dosyasının ilk 5 satırı:")
+        st.dataframe(df_kapasite.head())
 
-# Dosya yükleme
+    except Exception as e:
+        st.error(f"FY26 Kapasite dosyasını okurken bir hata oluştu: {e}")
+
+# FY26 Plan dosyasını yükleme
 uploaded_plan = st.file_uploader("FY26 Plan dosyasını yükleyin (FPY26 Plan.xlsx)", type=["xlsx", "xls"])
 if uploaded_plan is not None:
     try:
@@ -35,14 +44,6 @@ if uploaded_plan is not None:
         # Plan dosyasını yazdır
         st.write("Plan dosyasının ilk 5 satırı:")
         st.dataframe(df_plan.head())
-
-    except Exception as e:
-        st.error(f"FY26 Plan dosyasını işlerken bir hata oluştu: {e}")
-        # Veri analizi: Hangi cihaz kodundan hangi ayda kaç adet üretilmesi gerektiği
-        st.subheader("Aylık Üretim Planı")
-        for ay in df_plan.columns[1:]:  # Ay sütunları
-            st.write(f"**{ay}** için üretim planı:")
-            st.dataframe(df_plan[["cihaz_kodu", ay]].sort_values(by=ay, ascending=False).reset_index(drop=True))
 
     except Exception as e:
         st.error(f"FY26 Plan dosyasını okurken bir hata oluştu: {e}")
@@ -75,10 +76,9 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
         ]
 
         # Modüller arası bağımlılık kontrolü
-        st.subheader("Modüller Arası Bağımlılık")
+        st.subheader("Modüller Arası Bağımlılık ve Boş Hücrelerin Dikkate Alınması")
         st.write("""
-        Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. 
-        Bu nedenle, üretim planı modüller arasındaki bu bağımlılıkları gözeterek oluşturulur.
+        Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili modülün atlanacağını ifade eder.
         """)
 
         # Modüller için sıralı işlem hesaplaması
@@ -86,13 +86,15 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
             if modul in combined_data.columns:
                 if index == 0:
                     # İlk modül herhangi bir bağımlılığa sahip değil
-                    combined_data[f"{modul}_sure"] = combined_data["Eylül 2025"] / combined_data[modul]
+                    combined_data[f"{modul}_sure"] = combined_data.apply(
+                        lambda row: row["Eylül 2025"] / row[modul] if pd.notna(row[modul]) else 0, axis=1
+                    )
                 else:
-                    # Sonraki modüller önceki modülün tamamlanmasını bekler
+                    # Sonraki modüller önceki modülün tamamlanmasını bekler ve boş hücreleri atlar
                     onceki_modul = moduller[index - 1]
-                    combined_data[f"{modul}_sure"] = (
-                        combined_data[f"{onceki_modul}_sure"] + 
-                        (combined_data["Eylül 2025"] / combined_data[modul])
+                    combined_data[f"{modul}_sure"] = combined_data.apply(
+                        lambda row: row[f"{onceki_modul}_sure"] + (row["Eylül 2025"] / row[modul]) if pd.notna(row[modul]) else row[f"{onceki_modul}_sure"],
+                        axis=1
                     )
 
                 st.write(f"**{modul}** modülü için işlem süreleri (ilk 5 satır):")
