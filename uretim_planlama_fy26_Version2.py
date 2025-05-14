@@ -5,7 +5,7 @@ import pandas as pd
 # Veri yükleme ve sütun başlıklarını temizleme
 def load_and_clean_data(file_path, sheet_name):
     try:
-        data = pd.read_excel(file_path, sheet_name=sheet_name)
+        data = pd.read_excel(file_path, sheet_name=sheet_name, dtype={"urun_kodu": str})
         data.columns = (
             data.columns.str.strip()
             .str.replace("\xa0", " ")
@@ -18,8 +18,6 @@ def load_and_clean_data(file_path, sheet_name):
             .str.replace("ş", "s")
             .str.replace("ü", "u")
         )
-        # Debug çıktısı ekle
-        print(data.columns)  # Sütun adlarını kontrol edin
         return data
     except Exception as e:
         st.error(f"Veri yükleme hatası: {e}")
