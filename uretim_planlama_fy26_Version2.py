@@ -18,6 +18,8 @@ def load_and_clean_data(file_path, sheet_name):
             .str.replace("ş", "s")
             .str.replace("ü", "u")
         )
+        # Debug çıktısı ekle
+        print(data.columns)  # Sütun adlarını kontrol edin
         return data
     except Exception as e:
         st.error(f"Veri yükleme hatası: {e}")
