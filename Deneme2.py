@@ -40,3 +40,26 @@ try:
 
 except Exception as e:
     st.error(f"Veri yükleme veya işleme sırasında bir hata oluştu: {e}")
+
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Modüller ve bağımlılıkları
+modules = [
+    ("Bireysel Montaj", "Ön Ayar ve Kapama"),
+    ("Ön Ayar ve Kapama", "Termik Ayar"),
+    ("Termik Ayar", "Termik Test"),
+    ("Termik Test", "Gruplama ve Manyetik"),
+    ("Gruplama ve Manyetik", "Paketleme"),
+    ("Paketleme", "Mühürleme"),
+]
+
+# Grafik oluşturma
+G = nx.DiGraph()  # Yönlü bir grafik (Directed Graph)
+G.add_edges_from(modules)
+
+# Grafik görselleştirme
+plt.figure(figsize=(10, 6))
+nx.draw_networkx(G, with_labels=True, node_size=2000, node_color="lightblue", font_size=10, font_weight="bold", arrowsize=20)
+plt.title("Üretim Süreci Bağımlılık Zinciri")
+plt.show()
