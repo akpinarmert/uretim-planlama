@@ -208,9 +208,9 @@ elif page == "Takvim Tabanlı Planlama":
     
     selected_date = st.date_input(
         "Gün Seçimi",
-        value=baslangic_tarihi,  # Varsayılan değer
-        min_value=baslangic_tarihi,  # Minimum tarih
-        max_value=bitis_tarihi  # Maksimum tarih
+        value=baslangic_tarihi,
+        min_value=baslangic_tarihi,
+        max_value=bitis_tarihi
     )
     
     if selected_date:
@@ -232,7 +232,11 @@ elif page == "Takvim Tabanlı Planlama":
                 # Ay verilerini çek
                 plan_verileri = st.session_state.df_plan[["cihaz_kodu", secilen_ay]]
                 
-                # Optimizasyon için "cihaz_kodu" ve miktarları kullan
+                # Günlük hedefleri hesapla
+                toplam_calisma_gunu = 20  # Örneğin, her ayda 20 gün çalışıyoruz
+                plan_verileri["günlük_hedef"] = plan_verileri[secilen_ay] / toplam_calisma_gunu
+                
+                # Optimizasyon için "cihaz_kodu" ve günlük hedefleri kullan
                 from ortools.linear_solver import pywraplp
 
                 # Optimizasyon Modeli
@@ -241,28 +245,29 @@ elif page == "Takvim Tabanlı Planlama":
                     st.error("Optimizasyon kütüphanesi başlatılamadı.")
                 
                 # Cihaz tipleri ve üretim adetleri
-                cihaz_tipleri = plan_verileri["cihaz_kodu"].unique()
+                cihaz_tipleri = plan_verileri["cihaz_kodu"].tolist()
+                günlük_hedefler = plan_verileri["günlük_hedef"].tolist()
+                
                 uretim_miktarlari = {tip: solver.IntVar(0, 1634, f"miktar_{tip}") for tip in cihaz_tipleri}
                 
+                # Tip değişikliklerini hesaplamak için binary değişkenler
+                tip_degisim = {tip: solver.BoolVar(f"degisim_{tip}") for tip in cihaz_tipleri}
+                
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
-                tip_degisimleri = solver.IntVar(0, len(cihaz_tipleri), "tip_degisimleri")
-                solver.Minimize(tip_degisimleri)
+                solver.Minimize(
+                    solver.Sum(tip_degisim[tip] for tip in cihaz_tipleri)  # Tip değişikliklerini minimize et
+                )
                 
                 # Kısıtlar
                 toplam_uretim = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
-                solver.Add(toplam_uretim == 1634)  # Günlük hedef
+                solver.Add(toplam_uretim == 1634)  # Günlük toplam hedef
                 
-                # Operatör ve modül kapasiteleri
-                for modul in st.session_state.vardiyalar.keys():
-                    max_operator = st.session_state.max_operators[modul]
-                    calisma_suresi = 383  # Varsayılan dakika
-                    solver.Add(
-                        solver.Sum(
-                            uretim_miktarlari[tip] / st.session_state.df_kapasite.loc[
-                                st.session_state.df_kapasite["cihaz_kodu"] == tip, modul].values[0]
-                            for tip in cihaz_tipleri if modul in st.session_state.df_kapasite.columns
-                        ) <= max_operator * calisma_suresi
-                    )
+                for i, tip in enumerate(cihaz_tipleri):
+                    # Günlük hedef kısıtı
+                    solver.Add(uretim_miktarlari[tip] <= günlük_hedefler[i])
+                    
+                    # Tip değişikliği kısıtı: bir cihaz tipi üretildiyse, "tip_degisim" değişkeni 1 olur
+                    solver.Add(uretim_miktarlari[tip] >= 1).OnlyEnforceIf(tip_degisim[tip])
                 
                 # Çözümü çalıştır
                 status = solver.Solve()
@@ -273,7 +278,8 @@ elif page == "Takvim Tabanlı Planlama":
                         miktar = uretim_miktarlari[tip].solution_value()
                         if miktar > 0:
                             st.write(f"- Cihaz Tipi: {tip} | Adet: {int(miktar)}")
-                    st.write(f"Tip Değişiklik Sayısı: {int(tip_degisimleri.solution_value())}")
+                    toplam_tip_degisim = sum(tip_degisim[tip].solution_value() for tip in cihaz_tipleri)
+                    st.write(f"Tip Değişiklik Sayısı: {int(toplam_tip_degisim)}")
                 else:
                     st.error("Optimizasyon için uygun bir çözüm bulunamadı.")
             else:
