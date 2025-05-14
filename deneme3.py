@@ -7,7 +7,7 @@ st.title("Üretim Planlama Programı")
 # Açıklama
 st.write("""
 Bu program, üretim planlaması yapmak için iki Excel dosyasını (FY26 Kapasite ve FY26 Plan) okur ve analiz eder. 
-Ayrıca modüller arasındaki bağımlılıkları gözetir ve boş hücreleri bypass eder.
+Ayrıca modüller arasındaki bağımlılıkları gözetir ve boş hücreleri "üretilmiyor" olarak değerlendirir.
 """)
 
 # Dosya yükleme
@@ -78,7 +78,7 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
         # Modüller arası bağımlılık kontrolü
         st.subheader("Modüller Arası Bağımlılık ve Boş Hücrelerin Dikkate Alınması")
         st.write("""
-        Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili modülün atlanacağını ifade eder.
+        Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili cihazın o modülde üretilmeyeceğini ifade eder.
         """)
 
         # Modüller için sıralı işlem hesaplaması
@@ -90,7 +90,7 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
                         lambda row: (
                             row["Eylül 2025"] / row[modul]
                             if pd.notna(row[modul]) and row[modul] != 0
-                            else None
+                            else "Üretilmiyor"
                         ),
                         axis=1
                     )
@@ -100,10 +100,8 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
                     combined_data[f"{modul}_sure"] = combined_data.apply(
                         lambda row: (
                             row[f"{onceki_modul}_sure"] + (row["Eylül 2025"] / row[modul])
-                            if pd.notna(row[modul]) and row[modul] != 0 and pd.notna(row[f"{onceki_modul}_sure"])
-                            else row[f"{onceki_modul}_sure"]
-                            if pd.notna(row[f"{onceki_modul}_sure"])
-                            else None
+                            if pd.notna(row[modul]) and row[modul] != 0 and row[f"{onceki_modul}_sure"] != "Üretilmiyor"
+                            else "Üretilmiyor"
                         ),
                         axis=1
                     )
