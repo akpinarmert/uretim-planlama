@@ -14,22 +14,30 @@ Ayrıca modüller arasındaki bağımlılıkları gözetir.
 st.header("Excel Dosyalarını Yükleyin")
 
 # FY26 Plan dosyasını yükleme
+import streamlit as st
+import pandas as pd
+
+# Dosya yükleme
 uploaded_plan = st.file_uploader("FY26 Plan dosyasını yükleyin (FPY26 Plan.xlsx)", type=["xlsx", "xls"])
 if uploaded_plan is not None:
     try:
-        # "Plan" dosyasını oku ve ilgili sütunları seç
+        # Plan dosyasını oku ve ilgili sütunları seç
         df_plan = pd.read_excel(uploaded_plan, usecols="A,C:N")
         st.success("FY26 Plan dosyası başarıyla yüklendi!")
-        st.write("Plan dosyasının ilk 5 satırı:")
-        st.dataframe(df_plan.head())
-
-        # Sütun adlarını güncelle (her ayı temsil eden sütunlar için)
+        
+        # Sütun adlarını güncelle
         df_plan.columns = [
             "cihaz_kodu", "Eylül 2025", "Ekim 2025", "Kasım 2025", "Aralık 2025", "Ocak 2026",
             "Şubat 2026", "Mart 2026", "Nisan 2026", "Mayıs 2026", "Haziran 2026", 
             "Temmuz 2026", "Ağustos 2026"
         ]
 
+        # Plan dosyasını yazdır
+        st.write("Plan dosyasının ilk 5 satırı:")
+        st.dataframe(df_plan.head())
+
+    except Exception as e:
+        st.error(f"FY26 Plan dosyasını işlerken bir hata oluştu: {e}")
         # Veri analizi: Hangi cihaz kodundan hangi ayda kaç adet üretilmesi gerektiği
         st.subheader("Aylık Üretim Planı")
         for ay in df_plan.columns[1:]:  # Ay sütunları
