@@ -260,7 +260,6 @@ elif page == "Takvim Tabanlı Planlama":
                     solver.Add(uretim_miktarlari[tip] <= 1634 * uretiliyor_mu[tip])
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
                 solver.Minimize(solver.Sum(uretiliyor_mu[tip] for tip in cihaz_tipleri)) # Tip değişikliklerini minimize et
-                )
                 
                 # Kısıtlar
                 toplam_uretim = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
