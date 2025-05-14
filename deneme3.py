@@ -251,8 +251,8 @@ elif page == "Takvim Tabanlı Planlama":
                 uretim_miktarlari = {tip: solver.IntVar(0, 1634, f"miktar_{tip}") for tip in cihaz_tipleri}
                 
                 # Tip değişimlerini kontrol etmek için boolean değişkenler
-               # Boolean değişkenler oluştur
-               uretiliyor_mu = {tip: solver.BoolVar(f"uretiliyor_mu_{tip}") for tip in cihaz_tipleri}
+                # Boolean değişkenler oluştur
+                uretiliyor_mu = {tip: solver.BoolVar(f"uretiliyor_mu_{tip}") for tip in cihaz_tipleri}
 
                 for tip in cihaz_tipleri:
                     # Eğer üretim miktarı 1 veya daha büyükse, boolean değişken 1 olmalı
