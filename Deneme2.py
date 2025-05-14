@@ -65,3 +65,30 @@ plt.title("Üretim Süreci Bağımlılık Zinciri")
 
 # Streamlit'te grafiği göster
 st.pyplot(plt)
+
+import pandas as pd
+
+# Excel dosyasını yükleme
+file_path = "FY26 Plan.xlsx"  # Dosya yolu
+data = pd.read_excel(file_path, engine='openpyxl')
+
+# Sütunları tanımlama
+urun_kodlari = data.iloc[:, 0]  # A sütunu (Ürün kodları)
+urun_tanimlari = data.iloc[:, 1]  # B sütunu (Ürün tanımları)
+aylik_siparisler = data.iloc[:, 2:14]  # C-N sütunları (Aylık siparişler)
+
+# Aylık siparişlerin temsil ettiği aylar
+aylar = [
+    "Eylül 2025", "Ekim 2025", "Kasım 2025", "Aralık 2025",
+    "Ocak 2026", "Şubat 2026", "Mart 2026", "Nisan 2026",
+    "Mayıs 2026", "Haziran 2026", "Temmuz 2026", "Ağustos 2026"
+]
+aylik_siparisler.columns = aylar
+
+# Verileri kontrol etme
+print("Ürün Kodları:")
+print(urun_kodlari)
+
+print("\nÜrün Tanımları:")
+print(urun](#)
+
