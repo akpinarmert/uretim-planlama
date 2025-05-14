@@ -81,7 +81,7 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
         Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili modülün atlanacağını ifade eder.
         """)
 try:
-    # Modüller için sıralı işlem hesaplaması
+    # Kod burada
     for index, modul in enumerate(moduller):
         if modul in combined_data.columns:
             if index == 0:
@@ -106,6 +106,3 @@ try:
 
 except Exception as e:
     st.error(f"Analiz sırasında bir hata oluştu: {e}")
-        
-    except Exception as e:
-        st.error(f"Analiz sırasında bir hata oluştu: {e}")
