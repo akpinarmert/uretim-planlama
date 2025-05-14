@@ -68,16 +68,16 @@ st.pyplot(plt)
 
 import pandas as pd
 
-# Excel dosyasını yükleme
-file_path = "FY26 Plan.xlsx"  # Dosya yolu
-data = pd.read_excel(file_path, engine='openpyxl')
-# Verilerin boş olup olmadığını kontrol etme
+try:
+    # Excel dosyasını yükleme
+    data = pd.read_excel(file_path, engine='openpyxl')
+
+    # Excel'in boş olup olmadığını kontrol etme
     if data.empty:
         print("Uyarı: Excel dosyası boş!")
     else:
         print("Excel dosyası başarıyla yüklendi ve boş değil.")
-        print(data.head())  # İlk 5 satırı yazdır
-
+        print(data.head())  # İlk 5 satırı göster
 except FileNotFoundError:
     print("HATA: Dosya bulunamadı! Lütfen dosya yolunu kontrol edin.")
 except Exception as e:
