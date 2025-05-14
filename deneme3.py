@@ -81,7 +81,7 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
         Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili modülün atlanacağını ifade eder.
         """)
 
-        or index, modul in enumerate(moduller):
+        for index, modul in enumerate(moduller):
     if modul in combined_data.columns:
         if index == 0:
             # İlk modül herhangi bir bağımlılığa sahip değil
