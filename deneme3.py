@@ -87,9 +87,11 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
                 if index == 0:
                     # İlk modül herhangi bir bağımlılığa sahip değil
                     combined_data[f"{modul}_sure"] = combined_data.apply(
-                        lambda row: row["Eylül 2025"] / row[modul]
-                        if pd.notna(row[modul]) and row[modul] != 0
-                        else None,
+                        lambda row: (
+                            row["Eylül 2025"] / row[modul]
+                            if pd.notna(row[modul]) and row[modul] != 0
+                            else None
+                        ),
                         axis=1
                     )
                 else:
