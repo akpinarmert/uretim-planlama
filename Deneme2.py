@@ -87,17 +87,33 @@ cihaz_kodu = data.iloc[:, 0]  # A sütunu (Ürün kodları)
 urun_tanimlari = data.iloc[:, 1]  # B sütunu (Ürün tanımları)
 aylik_siparisler = data.iloc[:, 2:14]  # C-N sütunları (Aylık siparişler)
 
+# Sütunları tanımlama
+cihaz_kodu = data.iloc[:, 0]  # A sütunu
+urun_tanimlari = data.iloc[:, 1]  # B sütunu
+aylik_siparisler = data.iloc[:, 2:14]  # C-N sütunları (Aylık siparişler)
+
 # Aylık siparişlerin temsil ettiği aylar
 aylar = [
     "Eylül 2025", "Ekim 2025", "Kasım 2025", "Aralık 2025",
     "Ocak 2026", "Şubat 2026", "Mart 2026", "Nisan 2026",
     "Mayıs 2026", "Haziran 2026", "Temmuz 2026", "Ağustos 2026"
 ]
-aylik_siparisler.columns = aylar
 
-# Verileri kontrol etme
-print("Cihaz Kodları:")
-print(cihaz_kodu)
+# Kodunuzu buraya ekleyin:
+try:
+    # Sütun ve aylar uzunluğunu kontrol et
+    if len(aylik_siparisler.columns) != len(aylar):
+        print("Uyarı: Sütun sayısı ve ay listesi uzunluğu eşleşmiyor.")
+        aylar = aylar[:len(aylik_siparisler.columns)]  # Fazlalıkları kırp
+        while len(aylar) < len(aylik_siparisler.columns):
+            aylar.append(f"Ekstra-{len(aylar)+1}")  # Eksikleri doldur
 
-print("\nÜrün Tanımları:")
-print(urun_tanimlari)
+    # Sütun isimlerini yeniden ata
+    aylik_siparisler.columns = aylar
+    print("Sütun isimleri başarıyla atandı!")
+
+except ValueError as e:
+    print(f"Hata: {e}")
+
+# Verileri kontrol etme (isteğe bağlı)
+print(aylik_siparisler.head())  # Güncellenmiş DataFrame'i kontrol edin
