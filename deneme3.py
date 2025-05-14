@@ -13,28 +13,28 @@ Ayrıca modüller arasındaki bağımlılıkları gözetir.
 # Dosya yükleme
 st.header("Excel Dosyalarını Yükleyin")
 
-# FY26 Kapasite dosyasını yükleme
-uploaded_kapasite = st.file_uploader("FY26 Kapasite dosyasını yükleyin (FPY26 Kapasite.xlsx)", type=["xlsx", "xls"])
-if uploaded_kapasite is not None:
-    try:
-        # "Kapasite" sayfasını oku
-        df_kapasite = pd.read_excel(uploaded_kapasite, sheet_name="Kapasite")
-        st.success("FY26 Kapasite dosyası başarıyla yüklendi!")
-        st.write("Kapasite dosyasının ilk 5 satırı:")
-        st.dataframe(df_kapasite.head())
-
-    except Exception as e:
-        st.error(f"FY26 Kapasite dosyasını okurken bir hata oluştu: {e}")
-
 # FY26 Plan dosyasını yükleme
 uploaded_plan = st.file_uploader("FY26 Plan dosyasını yükleyin (FPY26 Plan.xlsx)", type=["xlsx", "xls"])
 if uploaded_plan is not None:
     try:
-        # FY26 Plan dosyasını oku
-        df_plan = pd.read_excel(uploaded_plan)
+        # "Plan" dosyasını oku ve ilgili sütunları seç
+        df_plan = pd.read_excel(uploaded_plan, usecols="A,C:N")
         st.success("FY26 Plan dosyası başarıyla yüklendi!")
         st.write("Plan dosyasının ilk 5 satırı:")
         st.dataframe(df_plan.head())
+
+        # Sütun adlarını güncelle (her ayı temsil eden sütunlar için)
+        df_plan.columns = [
+            "cihaz_kodu", "Eylül 2025", "Ekim 2025", "Kasım 2025", "Aralık 2025", "Ocak 2026",
+            "Şubat 2026", "Mart 2026", "Nisan 2026", "Mayıs 2026", "Haziran 2026", 
+            "Temmuz 2026", "Ağustos 2026"
+        ]
+
+        # Veri analizi: Hangi cihaz kodundan hangi ayda kaç adet üretilmesi gerektiği
+        st.subheader("Aylık Üretim Planı")
+        for ay in df_plan.columns[1:]:  # Ay sütunları
+            st.write(f"**{ay}** için üretim planı:")
+            st.dataframe(df_plan[["cihaz_kodu", ay]].sort_values(by=ay, ascending=False).reset_index(drop=True))
 
     except Exception as e:
         st.error(f"FY26 Plan dosyasını okurken bir hata oluştu: {e}")
@@ -78,13 +78,13 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
             if modul in combined_data.columns:
                 if index == 0:
                     # İlk modül herhangi bir bağımlılığa sahip değil
-                    combined_data[f"{modul}_sure"] = combined_data["Aylık Üretim Planı"] / combined_data[modul]
+                    combined_data[f"{modul}_sure"] = combined_data["Eylül 2025"] / combined_data[modul]
                 else:
                     # Sonraki modüller önceki modülün tamamlanmasını bekler
                     onceki_modul = moduller[index - 1]
                     combined_data[f"{modul}_sure"] = (
                         combined_data[f"{onceki_modul}_sure"] + 
-                        (combined_data["Aylık Üretim Planı"] / combined_data[modul])
+                        (combined_data["Eylül 2025"] / combined_data[modul])
                     )
 
                 st.write(f"**{modul}** modülü için işlem süreleri (ilk 5 satır):")
