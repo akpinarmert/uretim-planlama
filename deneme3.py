@@ -54,7 +54,7 @@ def analyze_data(df_plan, df_kapasite, calisma_gunu, vardiyalar):
                 )
                 
                 # Modülün toplam yıllık çalışma kapasitesi (dakika cinsinden)
-                toplam_kapasite_dakika = calisma_gunu * vardiyalar[index] * 8 * 60
+                toplam_kapasite_dakika = calisma_gunu * vardiyalar[modul] * 8 * 60
                 
                 # Modülün toplam doluluk oranı
                 toplam_harcanan_sure = combined_data[f"{modul}_sure_dakika"].sum()
@@ -103,7 +103,25 @@ if page == "Dashboard":
     - 2. vardiya operatör görev dağılımının yapılması.
     - Etkileşimli ve modüler bir üretim planlama arayüzü.
     """)
+
+    # Çalışma günü ve vardiya bilgileri
+    st.sidebar.header("Çalışma Ayarları")
+    calisma_gunu = st.sidebar.number_input("Yıllık Çalışma Günü", min_value=1, max_value=365, value=265)
     
+    st.sidebar.subheader("Günlük Çalışılabilir Vardiya Sayıları")
+    moduller = [
+        "bireysel_montaj",
+        "on_ayar_kapama",
+        "termik_ayar",
+        "termik_test",
+        "gruplama_manyetik",
+        "paketleme",
+        "muhurleme"
+    ]
+    vardiyalar = {}
+    for modul in moduller:
+        vardiyalar[modul] = st.sidebar.number_input(f"{modul.capitalize()}", min_value=1, max_value=3, value=2 if modul != "muhurleme" else 1)
+
     # Dosya yükleme alanları
     st.header("Excel Dosyalarını Yükleyin")
     
@@ -120,15 +138,6 @@ if page == "Dashboard":
         if st.session_state.df_plan is not None:
             st.write("FY26 Plan dosyasının ilk 5 satırı:")
             st.dataframe(st.session_state.df_plan.head())
-    
-    # Çalışma günü ve vardiya bilgileri
-    st.sidebar.header("Çalışma Ayarları")
-    calisma_gunu = st.sidebar.number_input("Yıllık Çalışma Günü", min_value=1, max_value=365, value=265)
-    vardiyalar = st.sidebar.text_input(
-        "Günlük Çalışılabilir Vardiyalar (Virgülle ayırın)", 
-        value="2,2,2,2,2,2,1"
-    )
-    vardiyalar = list(map(int, vardiyalar.split(",")))
     
     # Analiz durumunu kontrol et
     if st.session_state.df_kapasite is not None and st.session_state.df_plan is not None:
