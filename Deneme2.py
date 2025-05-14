@@ -82,14 +82,10 @@ except FileNotFoundError:
     print("HATA: Dosya bulunamadı! Lütfen dosya yolunu kontrol edin.")
 except Exception as e:
     print(f"HATA: {e}")
+
 # Sütunları tanımlama
 cihaz_kodu = data.iloc[:, 0]  # A sütunu (Ürün kodları)
 urun_tanimlari = data.iloc[:, 1]  # B sütunu (Ürün tanımları)
-aylik_siparisler = data.iloc[:, 2:14]  # C-N sütunları (Aylık siparişler)
-
-# Sütunları tanımlama
-cihaz_kodu = data.iloc[:, 0]  # A sütunu
-urun_tanimlari = data.iloc[:, 1]  # B sütunu
 aylik_siparisler = data.iloc[:, 2:14]  # C-N sütunları (Aylık siparişler)
 
 # Aylık siparişlerin temsil ettiği aylar
@@ -99,9 +95,8 @@ aylar = [
     "Mayıs 2026", "Haziran 2026", "Temmuz 2026", "Ağustos 2026"
 ]
 
-# Kodunuzu buraya ekleyin:
+# Sütun ve aylar uzunluğunu kontrol etme
 try:
-    # Sütun ve aylar uzunluğunu kontrol et
     if len(aylik_siparisler.columns) != len(aylar):
         print("Uyarı: Sütun sayısı ve ay listesi uzunluğu eşleşmiyor.")
         aylar = aylar[:len(aylik_siparisler.columns)]  # Fazlalıkları kırp
@@ -111,9 +106,13 @@ try:
     # Sütun isimlerini yeniden ata
     aylik_siparisler.columns = aylar
     print("Sütun isimleri başarıyla atandı!")
-
+    print(f"Yeni sütun isimleri: {aylik_siparisler.columns}")
 except ValueError as e:
     print(f"Hata: {e}")
 
-# Verileri kontrol etme (isteğe bağlı)
-print(aylik_siparisler.head())  # Güncellenmiş DataFrame'i kontrol edin
+# Verileri kontrol etme
+if not aylik_siparisler.empty:
+    print("Aylık siparişler tablosu başarıyla oluşturuldu:")
+    print(aylik_siparisler.head())
+else:
+    print("Uyarı: Aylık siparişler tablosu boş!")
