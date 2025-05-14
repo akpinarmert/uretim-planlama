@@ -196,3 +196,60 @@ elif page == "Analiz":
             st.write(f"Maksimum Operatör Sayısı: {sonuc['max_operators']}")
     else:
         st.warning("Lütfen önce Dashboard ekranından dosyalarınızı yükleyip analiz yapın.")
+# Yeni Sayfa: Takvim Tabanlı Planlama
+elif page == "Takvim Tabanlı Planlama":
+    st.title("Takvim Tabanlı Günlük Üretim Planı")
+    
+    # Takvim seçim arayüzü
+    st.subheader("Bir gün seçin:")
+    selected_date = st.date_input("Gün Seçimi")
+    
+    if selected_date:
+        st.write(f"Seçilen Gün: {selected_date}")
+        
+        # Günlük üretim planını optimize etme
+        if st.session_state.df_kapasite is not None and st.session_state.df_plan is not None:
+            from ortools.linear_solver import pywraplp
+            
+            # Optimizasyon Modeli
+            solver = pywraplp.Solver.CreateSolver('SCIP')
+            if not solver:
+                st.error("Optimizasyon kütüphanesi başlatılamadı.")
+            
+            # Cihaz tipleri ve üretim adetleri
+            cihaz_tipleri = st.session_state.df_plan["cihaz_kodu"].unique()
+            uretim_miktarlari = {tip: solver.IntVar(0, 1634, f"miktar_{tip}") for tip in cihaz_tipleri}
+            
+            # Amaç fonksiyonu: Tip değişikliklerini minimize et
+            tip_degisimleri = solver.IntVar(0, len(cihaz_tipleri), "tip_degisimleri")
+            solver.Minimize(tip_degisimleri)
+            
+            # Kısıtlar
+            toplam_uretim = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
+            solver.Add(toplam_uretim == 1634)  # Günlük hedef
+            
+            # Operatör ve modül kapasiteleri
+            for modul in st.session_state.vardiyalar.keys():
+                max_operator = st.session_state.max_operators[modul]
+                calisma_suresi = 383  # Varsayılan dakika
+                solver.Add(
+                    solver.Sum(uretim_miktarlari[tip] / st.session_state.df_kapasite.loc[
+                        st.session_state.df_kapasite["cihaz_kodu"] == tip, modul].values[0]
+                        for tip in cihaz_tipleri if modul in st.session_state.df_kapasite.columns
+                    ) <= max_operator * calisma_suresi
+                )
+            
+            # Çözümü çalıştır
+            status = solver.Solve()
+            if status == pywraplp.Solver.OPTIMAL:
+                st.success("Optimizasyon başarıyla tamamlandı!")
+                st.subheader("Günlük Üretim Planı")
+                for tip in cihaz_tipleri:
+                    miktar = uretim_miktarlari[tip].solution_value()
+                    if miktar > 0:
+                        st.write(f"- Cihaz Tipi: {tip} | Adet: {int(miktar)}")
+                st.write(f"Tip Değişiklik Sayısı: {int(tip_degisimleri.solution_value())}")
+            else:
+                st.error("Optimizasyon için uygun bir çözüm bulunamadı.")
+        else:
+            st.warning("Lütfen önce Dashboard ekranından dosyalarınızı yükleyin.")
