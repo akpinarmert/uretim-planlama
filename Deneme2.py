@@ -71,7 +71,17 @@ import pandas as pd
 # Excel dosyasını yükleme
 file_path = "FY26 Plan.xlsx"  # Dosya yolu
 data = pd.read_excel(file_path, engine='openpyxl')
+# Verilerin boş olup olmadığını kontrol etme
+    if data.empty:
+        print("Uyarı: Excel dosyası boş!")
+    else:
+        print("Excel dosyası başarıyla yüklendi ve boş değil.")
+        print(data.head())  # İlk 5 satırı yazdır
 
+except FileNotFoundError:
+    print("HATA: Dosya bulunamadı! Lütfen dosya yolunu kontrol edin.")
+except Exception as e:
+    print(f"HATA: {e}")
 # Sütunları tanımlama
 cihaz_kodu = data.iloc[:, 0]  # A sütunu (Ürün kodları)
 urun_tanimlari = data.iloc[:, 1]  # B sütunu (Ürün tanımları)
