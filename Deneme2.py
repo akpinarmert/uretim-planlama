@@ -73,7 +73,7 @@ file_path = "FY26 Plan.xlsx"  # Dosya yolu
 data = pd.read_excel(file_path, engine='openpyxl')
 
 # Sütunları tanımlama
-urun_kodlari = data.iloc[:, 0]  # A sütunu (Ürün kodları)
+cihaz_kodu = data.iloc[:, 0]  # A sütunu (Ürün kodları)
 urun_tanimlari = data.iloc[:, 1]  # B sütunu (Ürün tanımları)
 aylik_siparisler = data.iloc[:, 2:14]  # C-N sütunları (Aylık siparişler)
 
@@ -86,8 +86,8 @@ aylar = [
 aylik_siparisler.columns = aylar
 
 # Verileri kontrol etme
-print("Ürün Kodları:")
-print(urun_kodlari)
+print("Cihaz Kodları:")
+print(cihaz_kodu)
 
 print("\nÜrün Tanımları:")
-print(urun)
+print(urun_tanimlari)
