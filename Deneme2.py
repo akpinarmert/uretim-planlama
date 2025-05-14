@@ -62,4 +62,6 @@ G.add_edges_from(modules)
 plt.figure(figsize=(10, 6))
 nx.draw_networkx(G, with_labels=True, node_size=2000, node_color="lightblue", font_size=10, font_weight="bold", arrowsize=20)
 plt.title("Üretim Süreci Bağımlılık Zinciri")
-plt.show()
+
+# Streamlit'te grafiği göster
+st.pyplot(plt)
