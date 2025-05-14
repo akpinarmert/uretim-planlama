@@ -5,7 +5,6 @@ import pandas as pd
 def load_kapasite_file(uploaded_file):
     try:
         df = pd.read_excel(uploaded_file, sheet_name="Kapasite")
-        st.success("FY26 Kapasite dosyası başarıyla yüklendi!")
         return df
     except Exception as e:
         st.error(f"FY26 Kapasite dosyasını okurken bir hata oluştu: {e}")
@@ -19,7 +18,6 @@ def load_plan_file(uploaded_file):
             "Şubat 2026", "Mart 2026", "Nisan 2026", "Mayıs 2026", "Haziran 2026", 
             "Temmuz 2026", "Ağustos 2026"
         ]
-        st.success("FY26 Plan dosyası başarıyla yüklendi!")
         return df
     except Exception as e:
         st.error(f"FY26 Plan dosyasını okurken bir hata oluştu: {e}")
@@ -69,6 +67,16 @@ def analyze_data(df_plan, df_kapasite):
 # Sayfa başlıkları ve yönlendirme
 st.set_page_config(page_title="Üretim Planlama Dashboard", layout="wide")
 
+# Yüklenen dosyaları saklamak için session_state kullanımı
+if "df_kapasite" not in st.session_state:
+    st.session_state.df_kapasite = None
+
+if "df_plan" not in st.session_state:
+    st.session_state.df_plan = None
+
+if "combined_data" not in st.session_state:
+    st.session_state.combined_data = None
+
 # Sayfa seçimi
 st.sidebar.title("Navigasyon")
 page = st.sidebar.radio("Sayfa Seçimi", ["Dashboard", "Analiz"])
@@ -87,38 +95,41 @@ if page == "Dashboard":
     
     # Dosya yükleme alanları
     st.header("Excel Dosyalarını Yükleyin")
-    uploaded_kapasite = st.file_uploader("FY26 Kapasite dosyasını yükleyin (FPY26 Kapasite.xlsx)", type=["xlsx", "xls"])
-    uploaded_plan = st.file_uploader("FY26 Plan dosyasını yükleyin (FPY26 Plan.xlsx)", type=["xlsx", "xls"])
     
+    uploaded_kapasite = st.file_uploader("FY26 Kapasite dosyasını yükleyin (FPY26 Kapasite.xlsx)", type=["xlsx", "xls"])
+    if uploaded_kapasite is not None:
+        st.session_state.df_kapasite = load_kapasite_file(uploaded_kapasite)
+        if st.session_state.df_kapasite is not None:
+            st.write("FY26 Kapasite dosyasının ilk 5 satırı:")
+            st.dataframe(st.session_state.df_kapasite.head())
+    
+    uploaded_plan = st.file_uploader("FY26 Plan dosyasını yükleyin (FPY26 Plan.xlsx)", type=["xlsx", "xls"])
+    if uploaded_plan is not None:
+        st.session_state.df_plan = load_plan_file(uploaded_plan)
+        if st.session_state.df_plan is not None:
+            st.write("FY26 Plan dosyasının ilk 5 satırı:")
+            st.dataframe(st.session_state.df_plan.head())
+    
+    # Analiz durumunu kontrol et
+    if st.session_state.df_kapasite is not None and st.session_state.df_plan is not None:
+        st.session_state.combined_data = analyze_data(st.session_state.df_plan, st.session_state.df_kapasite)
+        st.success("Analiz tamamlandı! 'Analiz' sekmesinden sonuçları görüntüleyebilirsiniz.")
+
 elif page == "Analiz":
     # Analiz ekranı
     st.title("Üretim Planlama Analizi")
     st.subheader("Yüklenen Veriler ve Analiz Sonuçları")
     
-    # Kapasite dosyasını yükleme ve gösterme
-    if 'uploaded_kapasite' in locals() and uploaded_kapasite is not None:
-        df_kapasite = load_kapasite_file(uploaded_kapasite)
-        if df_kapasite is not None:
-            st.write("FY26 Kapasite dosyasının ilk 5 satırı:")
-            st.dataframe(df_kapasite.head())
-    
-    # Plan dosyasını yükleme ve gösterme
-    if 'uploaded_plan' in locals() and uploaded_plan is not None:
-        df_plan = load_plan_file(uploaded_plan)
-        if df_plan is not None:
-            st.write("FY26 Plan dosyasının ilk 5 satırı:")
-            st.dataframe(df_plan.head())
-    
-    # Analiz ve sonuçların gösterimi
-    if 'df_kapasite' in locals() and 'df_plan' in locals() and df_kapasite is not None and df_plan is not None:
-        combined_data = analyze_data(df_plan, df_kapasite)
-        if combined_data is not None:
-            st.write("Birleştirilmiş veri seti (ilk 5 satır):")
-            st.dataframe(combined_data.head())
-            
-            # Özet bilgiler
-            st.subheader("Analiz Özeti")
-            st.write("""
-            - Tüm süreler saat cinsinden hesaplanmıştır.
-            - Boş hücreler "Üretilmiyor" olarak değerlendirilmiştir.
-            """)
+    # Analiz sonuçlarını göster
+    if st.session_state.combined_data is not None:
+        st.write("Birleştirilmiş veri seti (ilk 5 satır):")
+        st.dataframe(st.session_state.combined_data.head())
+        
+        # Özet bilgiler
+        st.subheader("Analiz Özeti")
+        st.write("""
+        - Tüm süreler saat cinsinden hesaplanmıştır.
+        - Boş hücreler "Üretilmiyor" olarak değerlendirilmiştir.
+        """)
+    else:
+        st.warning("Lütfen önce Dashboard ekranından dosyalarınızı yükleyip analiz yapın.")
