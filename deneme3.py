@@ -1,71 +1,35 @@
 import streamlit as st
 import pandas as pd
 
-# Başlık
-st.title("Üretim Planlama Programı")
-
-# Açıklama
-st.write("""
-Bu program, üretim planlaması yapmak için iki Excel dosyasını (FY26 Kapasite ve FY26 Plan) okur ve analiz eder. 
-Ayrıca modüller arasındaki bağımlılıkları gözetir ve boş hücreleri "üretilmiyor" olarak değerlendirir.
-Süreler saat cinsinden hesaplanmıştır.
-""")
-
-# Dosya yükleme
-st.header("Excel Dosyalarını Yükleyin")
-
-# FY26 Kapasite dosyasını yükleme
-uploaded_kapasite = st.file_uploader("FY26 Kapasite dosyasını yükleyin (FPY26 Kapasite.xlsx)", type=["xlsx", "xls"])
-if uploaded_kapasite is not None:
+# Fonksiyonlar
+def load_kapasite_file(uploaded_file):
     try:
-        # "Kapasite" sayfasını oku
-        df_kapasite = pd.read_excel(uploaded_kapasite, sheet_name="Kapasite")
+        df = pd.read_excel(uploaded_file, sheet_name="Kapasite")
         st.success("FY26 Kapasite dosyası başarıyla yüklendi!")
-        st.write("Kapasite dosyasının ilk 5 satırı:")
-        st.dataframe(df_kapasite.head())
-
+        return df
     except Exception as e:
         st.error(f"FY26 Kapasite dosyasını okurken bir hata oluştu: {e}")
+        return None
 
-# FY26 Plan dosyasını yükleme
-uploaded_plan = st.file_uploader("FY26 Plan dosyasını yükleyin (FPY26 Plan.xlsx)", type=["xlsx", "xls"])
-if uploaded_plan is not None:
+def load_plan_file(uploaded_file):
     try:
-        # Plan dosyasını oku ve ilgili sütunları seç
-        df_plan = pd.read_excel(uploaded_plan, usecols="A,C:N")
-        st.success("FY26 Plan dosyası başarıyla yüklendi!")
-        
-        # Sütun adlarını güncelle
-        df_plan.columns = [
+        df = pd.read_excel(uploaded_file, usecols="A,C:N")
+        df.columns = [
             "cihaz_kodu", "Eylül 2025", "Ekim 2025", "Kasım 2025", "Aralık 2025", "Ocak 2026",
             "Şubat 2026", "Mart 2026", "Nisan 2026", "Mayıs 2026", "Haziran 2026", 
             "Temmuz 2026", "Ağustos 2026"
         ]
-
-        # Plan dosyasını yazdır
-        st.write("Plan dosyasının ilk 5 satırı:")
-        st.dataframe(df_plan.head())
-
+        st.success("FY26 Plan dosyası başarıyla yüklendi!")
+        return df
     except Exception as e:
         st.error(f"FY26 Plan dosyasını okurken bir hata oluştu: {e}")
+        return None
 
-# Analiz
-if uploaded_kapasite is not None and uploaded_plan is not None:
-    st.header("Modül Bağımlılıklarına Göre Üretim Planı Analizi")
-
+def analyze_data(df_plan, df_kapasite):
     try:
-        # Verileri birleştirme
-        combined_data = pd.merge(
-            df_plan,
-            df_kapasite,
-            on="cihaz_kodu",
-            how="inner"
-        )
-
-        st.write("Birleştirilmiş veri seti (ilk 5 satır):")
-        st.dataframe(combined_data.head())
-
-        # Modül sıralaması
+        combined_data = pd.merge(df_plan, df_kapasite, on="cihaz_kodu", how="inner")
+        
+        # Modül sıralaması ve analiz
         moduller = [
             "bireysel_montaj",
             "on_ayar_kapama",
@@ -75,19 +39,10 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
             "paketleme",
             "muhurleme"
         ]
-
-        # Modüller arası bağımlılık kontrolü
-        st.subheader("Modüller Arası Bağımlılık ve Boş Hücrelerin Dikkate Alınması")
-        st.write("""
-        Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili cihazın o modülde üretilmeyeceğini ifade eder.
-        Tüm süreler saat cinsinden hesaplanmıştır.
-        """)
-
-        # Modüller için sıralı işlem hesaplaması
+        
         for index, modul in enumerate(moduller):
             if modul in combined_data.columns:
                 if index == 0:
-                    # İlk modül herhangi bir bağımlılığa sahip değil
                     combined_data[f"{modul}_sure_saat"] = combined_data.apply(
                         lambda row: (
                             row["Eylül 2025"] / row[modul]
@@ -97,7 +52,6 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
                         axis=1
                     )
                 else:
-                    # Sonraki modüller önceki modülün tamamlanmasını bekler ve boş hücreleri atlar
                     onceki_modul = moduller[index - 1]
                     combined_data[f"{modul}_sure_saat"] = combined_data.apply(
                         lambda row: (
@@ -107,10 +61,64 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
                         ),
                         axis=1
                     )
-
-                # Sonuçları yazdır
-                st.write(f"**{modul}** modülü için işlem süreleri (saat cinsinden) (ilk 5 satır):")
-                st.dataframe(combined_data[["cihaz_kodu", f"{modul}_sure_saat"]].head())
-
+        return combined_data
     except Exception as e:
         st.error(f"Analiz sırasında bir hata oluştu: {e}")
+        return None
+
+# Sayfa başlıkları ve yönlendirme
+st.set_page_config(page_title="Üretim Planlama Dashboard", layout="wide")
+
+# Sayfa seçimi
+st.sidebar.title("Navigasyon")
+page = st.sidebar.radio("Sayfa Seçimi", ["Dashboard", "Analiz"])
+
+if page == "Dashboard":
+    # Dashboard ekranı
+    st.title("Üretim Planlama Dashboard")
+    
+    # Proje hedefleri
+    st.subheader("Projenin Hedefleri")
+    st.write("""
+    - Tip bazlı minimum tip değişikliği ile optimize edilecek günlük üretim planlarının hazırlanması.
+    - 2. vardiya operatör görev dağılımının yapılması.
+    - Etkileşimli ve modüler bir üretim planlama arayüzü.
+    """)
+    
+    # Dosya yükleme alanları
+    st.header("Excel Dosyalarını Yükleyin")
+    uploaded_kapasite = st.file_uploader("FY26 Kapasite dosyasını yükleyin (FPY26 Kapasite.xlsx)", type=["xlsx", "xls"])
+    uploaded_plan = st.file_uploader("FY26 Plan dosyasını yükleyin (FPY26 Plan.xlsx)", type=["xlsx", "xls"])
+    
+elif page == "Analiz":
+    # Analiz ekranı
+    st.title("Üretim Planlama Analizi")
+    st.subheader("Yüklenen Veriler ve Analiz Sonuçları")
+    
+    # Kapasite dosyasını yükleme ve gösterme
+    if 'uploaded_kapasite' in locals() and uploaded_kapasite is not None:
+        df_kapasite = load_kapasite_file(uploaded_kapasite)
+        if df_kapasite is not None:
+            st.write("FY26 Kapasite dosyasının ilk 5 satırı:")
+            st.dataframe(df_kapasite.head())
+    
+    # Plan dosyasını yükleme ve gösterme
+    if 'uploaded_plan' in locals() and uploaded_plan is not None:
+        df_plan = load_plan_file(uploaded_plan)
+        if df_plan is not None:
+            st.write("FY26 Plan dosyasının ilk 5 satırı:")
+            st.dataframe(df_plan.head())
+    
+    # Analiz ve sonuçların gösterimi
+    if 'df_kapasite' in locals() and 'df_plan' in locals() and df_kapasite is not None and df_plan is not None:
+        combined_data = analyze_data(df_plan, df_kapasite)
+        if combined_data is not None:
+            st.write("Birleştirilmiş veri seti (ilk 5 satır):")
+            st.dataframe(combined_data.head())
+            
+            # Özet bilgiler
+            st.subheader("Analiz Özeti")
+            st.write("""
+            - Tüm süreler saat cinsinden hesaplanmıştır.
+            - Boş hücreler "Üretilmiyor" olarak değerlendirilmiştir.
+            """)
