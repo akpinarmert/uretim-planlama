@@ -250,9 +250,12 @@ elif page == "Takvim Tabanlı Planlama":
                 
                 uretim_miktarlari = {tip: solver.IntVar(0, 1634, f"miktar_{tip}") for tip in cihaz_tipleri}
                 
-                # Tip değişikliklerini hesaplamak için binary değişkenler
-                tip_degisim = {tip: solver.BoolVar(f"degisim_{tip}") for tip in cihaz_tipleri}
-                
+                # Tip değişimlerini kontrol etmek için boolean değişkenler
+                uretiliyor_mu = {tip: solver.BoolVar(f"uretiliyor_mu_{tip}") for tip in cihaz_tipleri}
+                for tip in cihaz_tipleri:
+    # Eğer bir cihaz tipi üretiliyorsa, boolean değişkeni 1 olmalı
+    solver.Add(uretim_miktarlari[tip] > 0).OnlyEnforceIf(uretiliyor_mu[tip])
+    solver.Add(uretim_miktarlari[tip] == 0).OnlyEnforceIf(uretiliyor_mu[tip].Not())
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
                 solver.Minimize(
                     solver.Sum(tip_degisim[tip] for tip in cihaz_tipleri)  # Tip değişikliklerini minimize et
