@@ -70,7 +70,7 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
             "on_ayar_kapama",
             "termik_ayar",
             "termik_test",
-            "gruplama__manyetik",
+            "gruplama_manyetik",
             "paketleme",
             "muhurleme"
         ]
