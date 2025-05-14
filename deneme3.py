@@ -255,7 +255,7 @@ elif page == "Takvim Tabanlı Planlama":
                 for tip in cihaz_tipleri:
                     # Eğer bir cihaz tipi üretiliyorsa, boolean değişkeni 1 olmalı
                     solver.Add(uretim_miktarlari[tip] >= 1).OnlyEnforceIf(uretiliyor_mu[tip])
-                    solver.Add(uretim_miktarlari[tip] <= 0).OnlyEnforceIf(uretiliyor_mu[tip].Not())
+                    solver.Add(uretim_miktarlari[tip] == 0).OnlyEnforceIf(uretiliyor_mu[tip].Not())
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
                 solver.Minimize(
                     solver.Sum(tip_degisim[tip] for tip in cihaz_tipleri)  # Tip değişikliklerini minimize et
