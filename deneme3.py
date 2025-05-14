@@ -8,6 +8,7 @@ st.title("Üretim Planlama Programı")
 st.write("""
 Bu program, üretim planlaması yapmak için iki Excel dosyasını (FY26 Kapasite ve FY26 Plan) okur ve analiz eder. 
 Ayrıca modüller arasındaki bağımlılıkları gözetir ve boş hücreleri "üretilmiyor" olarak değerlendirir.
+Süreler saat cinsinden hesaplanmıştır.
 """)
 
 # Dosya yükleme
@@ -79,6 +80,7 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
         st.subheader("Modüller Arası Bağımlılık ve Boş Hücrelerin Dikkate Alınması")
         st.write("""
         Her modül, kendisinden önceki modülün işlemini tamamlamasını bekler. Boş hücreler, ilgili cihazın o modülde üretilmeyeceğini ifade eder.
+        Tüm süreler saat cinsinden hesaplanmıştır.
         """)
 
         # Modüller için sıralı işlem hesaplaması
@@ -86,7 +88,7 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
             if modul in combined_data.columns:
                 if index == 0:
                     # İlk modül herhangi bir bağımlılığa sahip değil
-                    combined_data[f"{modul}_sure"] = combined_data.apply(
+                    combined_data[f"{modul}_sure_saat"] = combined_data.apply(
                         lambda row: (
                             row["Eylül 2025"] / row[modul]
                             if pd.notna(row[modul]) and row[modul] != 0
@@ -97,18 +99,18 @@ if uploaded_kapasite is not None and uploaded_plan is not None:
                 else:
                     # Sonraki modüller önceki modülün tamamlanmasını bekler ve boş hücreleri atlar
                     onceki_modul = moduller[index - 1]
-                    combined_data[f"{modul}_sure"] = combined_data.apply(
+                    combined_data[f"{modul}_sure_saat"] = combined_data.apply(
                         lambda row: (
-                            row[f"{onceki_modul}_sure"] + (row["Eylül 2025"] / row[modul])
-                            if pd.notna(row[modul]) and row[modul] != 0 and row[f"{onceki_modul}_sure"] != "Üretilmiyor"
+                            row[f"{onceki_modul}_sure_saat"] + (row["Eylül 2025"] / row[modul])
+                            if pd.notna(row[modul]) and row[modul] != 0 and row[f"{onceki_modul}_sure_saat"] != "Üretilmiyor"
                             else "Üretilmiyor"
                         ),
                         axis=1
                     )
 
                 # Sonuçları yazdır
-                st.write(f"**{modul}** modülü için işlem süreleri (ilk 5 satır):")
-                st.dataframe(combined_data[["cihaz_kodu", f"{modul}_sure"]].head())
+                st.write(f"**{modul}** modülü için işlem süreleri (saat cinsinden) (ilk 5 satır):")
+                st.dataframe(combined_data[["cihaz_kodu", f"{modul}_sure_saat"]].head())
 
     except Exception as e:
         st.error(f"Analiz sırasında bir hata oluştu: {e}")
