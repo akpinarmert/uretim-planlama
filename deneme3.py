@@ -254,18 +254,18 @@ elif page == "Takvim Tabanlı Planlama":
                 # Boolean değişkenler: Cihaz tipi o gün üretiliyor mu?
                 uretiliyor_mu = {tip: solver.BoolVar(f"uretiliyor_mu_{tip}") for tip in cihaz_tipleri}
 
-                # Boolean değişkenler: Tip değişikliği olup olmadığını kontrol etmek için
+                # Tip değişimlerini kontrol etmek için boolean değişkenler
                 tip_degisim = {tip: [solver.BoolVar(f"tip_degisim_{tip}_{gun}") for gun in range(toplam_calisma_gunu)]
                                for tip in cihaz_tipleri}
 
                 # Günlük üretim miktarları ve tip değişikliklerini optimize etmek için kısıtlar
-                for gun in range(1, toplam_calisma_gunu + 1):
+                for gun in range(toplam_calisma_gunu):  # Günlük üretim planı
                     # Günlük toplam üretim kısıtı
                     solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) == 1634)
 
                     # Tip değişikliklerini kontrol etmek için kısıtlar
                     for tip in cihaz_tipleri:
-                        if gun > 1:
+                        if gun > 0:  # İlk gün için tip değişikliği kontrol edilmez
                             solver.Add(tip_degisim[tip][gun] >= uretiliyor_mu[tip] - uretiliyor_mu[tip])
                             solver.Add(tip_degisim[tip][gun] >= uretiliyor_mu[tip] - uretiliyor_mu[tip])
 
@@ -273,13 +273,13 @@ elif page == "Takvim Tabanlı Planlama":
                         solver.Add(uretim_miktarlari[tip] >= 1 - 1634 * (1 - uretiliyor_mu[tip]))
                         solver.Add(uretim_miktarlari[tip] <= 1634 * uretiliyor_mu[tip])
 
-                # Aylık hedeflere uygunluğunu kontrol etmek için kısıtlar
+                # Aylık hedeflere uygunluğu kontrol etmek için kısıtlar
                 for tip, hedef in zip(cihaz_tipleri, günlük_hedefler):
-                    aylik_toplam = solver.Sum(uretim_miktarlari[tip] for tip in range(1, toplam_calisma_gunu + 1))
+                    aylik_toplam = solver.Sum(uretim_miktarlari[tip] for tip in range(toplam_calisma_gunu))
                     solver.Add(aylik_toplam == hedef)
 
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
-                solver.Minimize(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(1, toplam_calisma_gunu)))
+                solver.Minimize(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)))
                 
                 # Çözümü çalıştır
                 status = solver.Solve()
