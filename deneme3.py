@@ -275,7 +275,7 @@ elif page == "Takvim Tabanlı Planlama":
 
                 # Aylık hedeflere uygunluğu kontrol etmek için kısıtlar
                 for tip, hedef in zip(cihaz_tipleri, günlük_hedefler):
-                    # HATA DÜZELTİLDİ: Doğru anahtarlarla iterasyon yapılır
+                    # Doğru anahtarlarla iterasyon yapılır
                     aylik_toplam = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
                     solver.Add(aylik_toplam == hedef)
 
