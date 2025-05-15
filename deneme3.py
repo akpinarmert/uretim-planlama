@@ -260,8 +260,8 @@ elif page == "Takvim Tabanlı Planlama":
                 # Günlük üretim miktarları ve tip değişikliklerini optimize etmek için kısıtlar
                 for gun in range(toplam_calisma_gunu):
                     # Günlük toplam üretim kısıtı
-                    solver.Add(solver.Sum(uretim_miktarlari[gun][kod] for kod in cihaz_kodlari) >= 1600)  # Alt sınır
-                    solver.Add(solver.Sum(uretim_miktarlari[gun][kod] for kod in cihaz_kodlari) <= 1650)  # Üst sınır
+                    solver.Add(solver.Sum(uretim_miktarlari[gun][kod] for kod in cihaz_kodlari) >= 0)  # Alt sınır (üretim yapılmayan günlere izin ver)
+                    solver.Add(solver.Sum(uretim_miktarlari[gun][kod] for kod in cihaz_kodlari) <= 1634)  # Üst sınır
 
                     # Eğer üretim miktarı >= 1 ise, boolean değişken 1 olmalı
                     for kod in cihaz_kodlari:
