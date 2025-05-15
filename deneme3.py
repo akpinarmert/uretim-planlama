@@ -243,6 +243,15 @@ elif page == "Takvim Tabanlı Planlama":
                 solver = pywraplp.Solver.CreateSolver('SCIP')
                 if not solver:
                     st.error("Optimizasyon kütüphanesi başlatılamadı.")
+
+                # LP modelini bir dosyaya kaydet
+                with open("model.lp", "w") as f:
+                    f.write(solver.ExportModelAsLpFormat(False))  # Çözüm değerlerini içermesin
+
+                # LP modelini Streamlit'te indirme düğmesi ekleyin
+                with open("model.lp", "r") as file:
+                    lp_content = file.read()
+                    st.download_button("LP Modelini İndir", lp_content, file_name="model.lp")
                 
                 # Cihaz tipleri ve üretim adetleri
                 cihaz_tipleri = plan_verileri["cihaz_kodu"].tolist()
@@ -275,9 +284,15 @@ elif page == "Takvim Tabanlı Planlama":
                     # Solver için logları etkinleştir
                     solver.EnableOutput()
                     # Günlük üretim hedefi için esnek bir aralık
-                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) >= 1600)  # Alt sınır
-                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) <= 1650)  # Üst sınır
+                    # Slack değişkenleri ile kısıtları esnek hale getirin
+                    slack = solver.NumVar(0, solver.infinity(), "slack")
+                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) + slack >= 1600)
+                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) - slack <= 1650)
 
+                    # Slack değişkenlerinin çözüm sonrası değerlerini yazdırın
+                    for tip in cihaz_tipleri:
+                        st.write(f"Slack for {tip}: {slack.solution_value()}")
+                    
                     # Tip değişiklikleri için maksimum sınır
                     max_tip_degisim = 10  # Maksimum tip değişikliği sayısı
                     solver.Add(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)) <= max_tip_degisim)
@@ -322,9 +337,17 @@ elif page == "Takvim Tabanlı Planlama":
                 # Logları al
                 solver_logs = log_capture_string.getvalue()
 
-                # Çözüm Durumunu Kontrol Et
+                # Çözüm sonrası kısıt ve değişken değerlerini loglayın
                 if status == pywraplp.Solver.OPTIMAL:
                     st.success("Optimizasyon başarıyla tamamlandı!")
+
+                    # Kısıt değerlerini yazdır
+                    for constraint in solver.constraints():
+                        st.write(f"Kısıt: {constraint.name()} - {constraint.Lb()} <= {constraint.solution_value()} <= {constraint.Ub()}")
+
+                    # Değişken değerlerini yazdır
+                    for var in uretim_miktarlari.values():
+                        st.write(f"Değişken: {var.name()} - Çözüm: {var.solution_value()}")
                 elif status == pywraplp.Solver.FEASIBLE:
                     st.warning("Geçici bir çözüm bulundu, ancak optimize edilmedi.")
                 elif status == pywraplp.Solver.INFEASIBLE:
