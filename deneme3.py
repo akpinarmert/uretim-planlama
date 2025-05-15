@@ -235,6 +235,20 @@ elif page == "Takvim Tabanlı Planlama":
                 # Günlük hedefleri hesapla
                 toplam_calisma_gunu = 20  # Örneğin, her ayda 20 gün çalışıyoruz
                 plan_verileri["günlük_hedef"] = plan_verileri[secilen_ay] / toplam_calisma_gunu
+
+                # Seçilen aya ait sütun adını belirleyin
+                secilen_ay = f"{aylar[selected_date.month - 1]} {selected_date.year}"
+
+                # Plan verilerinden seçilen aya ait hedefleri çek
+                if secilen_ay in st.session_state.df_plan.columns:
+                    plan_verileri = st.session_state.df_plan[["cihaz_kodu", secilen_ay]]
+                    aylik_hedefler = plan_verileri.set_index("cihaz_kodu")[secilen_ay].to_dict()
+
+                    # Aylık hedeflerin boş olup olmadığını kontrol et
+                    if not aylik_hedefler:
+                        st.error("Aylık hedefler sözlüğü boş. Lütfen plan dosyasını kontrol edin.")
+                else:
+                    st.error(f"Seçilen ay '{secilen_ay}' plan dosyasında bulunamadı.")
                 
                 # Optimizasyon için "cihaz_kodu" ve günlük hedefleri kullan
                 from ortools.linear_solver import pywraplp
