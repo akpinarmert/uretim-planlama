@@ -254,24 +254,27 @@ elif page == "Takvim Tabanlı Planlama":
                 # Boolean değişkenler oluştur
                 uretiliyor_mu = {tip: solver.BoolVar(f"uretiliyor_mu_{tip}") for tip in cihaz_tipleri}
                 tip_degisim = {tip: solver.BoolVar(f"tip_degisim_{tip}") for tip in cihaz_tipleri}
-                
+
                 for tip in cihaz_tipleri:
                     # Eğer üretim miktarı 1 veya daha büyükse, boolean değişken 1 olmalı
                     solver.Add(uretim_miktarlari[tip] >= 1 - 1634 * (1 - uretiliyor_mu[tip]))
                     solver.Add(uretim_miktarlari[tip] <= 1634 * uretiliyor_mu[tip])
+
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
-                solver.Minimize(solver.Sum(uretiliyor_mu[tip] for tip in cihaz_tipleri)) # Tip değişikliklerini minimize et
-                
+                solver.Minimize(solver.Sum(tip_degisim[tip] for tip in cihaz_tipleri))  # Tip değişikliklerini minimize et
+
                 # Kısıtlar
                 toplam_uretim = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
                 solver.Add(toplam_uretim == 1634)  # Günlük toplam hedef
-                
+
                 for i, tip in enumerate(cihaz_tipleri):
                     # Günlük hedef kısıtı
                     solver.Add(uretim_miktarlari[tip] <= günlük_hedefler[i])
-                    
+    
                     # Tip değişikliği kısıtı: bir cihaz tipi üretildiyse, "tip_degisim" değişkeni 1 olur
+                    # Bu değişken bir BoolVar olduğu için doğruluğunu garanti ediyoruz
                     solver.Add(uretim_miktarlari[tip] >= 1).OnlyEnforceIf(tip_degisim[tip])
+                    solver.Add(uretim_miktarlari[tip] == 0).OnlyEnforceIf(tip_degisim[tip].Not())
                 
                 # Çözümü çalıştır
                 status = solver.Solve()
