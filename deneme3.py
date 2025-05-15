@@ -262,7 +262,7 @@ elif page == "Takvim Tabanlı Planlama":
                     solver.Add(uretim_miktarlari[tip] >= 1 - 1634 * (1 - uretiliyor_mu[tip]))
                     solver.Add(uretim_miktarlari[tip] <= 1634 * uretiliyor_mu[tip])
 
-                    # Tip değişikliği kısıtı: Eğer üretim miktarı 1 veya daha büyükse, tip_degisim[tip] değişkeni 1 olmalı
+                    # Tip değişikliği kısıtı
                     solver.Add(uretim_miktarlari[tip] >= 1).OnlyEnforceIf(tip_degisim[tip])
                     solver.Add(uretim_miktarlari[tip] == 0).OnlyEnforceIf(tip_degisim[tip].Not())
 
