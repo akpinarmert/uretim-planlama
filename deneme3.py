@@ -272,7 +272,28 @@ elif page == "Takvim Tabanlı Planlama":
                         # Eğer üretim miktarı >= 1 ise, boolean değişken 1 olmalı
                         solver.Add(uretim_miktarlari[tip] >= 1 - 1634 * (1 - uretiliyor_mu[tip]))
                         solver.Add(uretim_miktarlari[tip] <= 1634 * uretiliyor_mu[tip])
+                    # Günlük üretim hedefi için esnek bir aralık
+                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) >= 1600)  # Alt sınır
+                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) <= 1650)  # Üst sınır
 
+                    # Tip değişiklikleri için maksimum sınır
+                    max_tip_degisim = 10  # Maksimum tip değişikliği sayısı
+                    solver.Add(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)) <= max_tip_degisim)
+
+                    # Üretim miktarları için daha geniş sınırlar
+                    for tip in cihaz_tipleri:
+                        solver.Add(uretim_miktarlari[tip] >= 100)  # Minimum üretim miktarı
+                        solver.Add(uretim_miktarlari[tip] <= 1650)  # Maksimum üretim miktarı
+
+                    # Aylık hedefler için tolerans
+                    tolerance = 0.05  # %5 tolerans
+                    for tip, hedef in zip(cihaz_tipleri, günlük_hedefler):
+                        aylik_toplam = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
+                        solver.Add(aylik_toplam >= hedef * (1 - tolerance))  # Alt sınır
+                        solver.Add(aylik_toplam <= hedef * (1 + tolerance))  # Üst sınır
+
+                    # Amaç fonksiyonu: Tip değişikliklerini minimize et
+                    solver.Minimize(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)))
                 # Aylık hedeflere uygunluğu kontrol etmek için kısıtlar
                 for tip, hedef in zip(cihaz_tipleri, günlük_hedefler):
                     # Doğru anahtarlarla iterasyon yapılır
@@ -282,20 +303,20 @@ elif page == "Takvim Tabanlı Planlama":
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
                 solver.Minimize(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)))
                 
-                # Çözümü çalıştır
+                # Optimizasyon Modeli
                 status = solver.Solve()
+
+                # Çözüm Durumunu Kontrol Et
                 if status == pywraplp.Solver.OPTIMAL:
                     st.success("Optimizasyon başarıyla tamamlandı!")
-                    st.subheader("Günlük Üretim Planı")
-                    for tip in cihaz_tipleri:
-                        miktar = uretim_miktarlari[tip].solution_value()
-                        if miktar > 0:
-                            st.write(f"- Cihaz Tipi: {tip} | Adet: {int(miktar)}")
-                    toplam_tip_degisim = sum(tip_degisim[tip].solution_value() for tip in cihaz_tipleri)
-                    st.write(f"Tip Değişiklik Sayısı: {int(toplam_tip_degisim)}")
+                elif status == pywraplp.Solver.FEASIBLE:
+                    st.warning("Geçici bir çözüm bulundu, ancak optimize edilmedi.")
+                elif status == pywraplp.Solver.INFEASIBLE:
+                    st.error("Kısıtlar çelişkili olduğu için çözüm bulunamadı.")
+                    infeasibility_report = solver.InfeasibilityReport()
+                    st.write("Kısıt Uyumsuzluk Raporu:")
+                    st.code(infeasibility_report)
+                elif status == pywraplp.Solver.UNBOUNDED:
+                    st.error("Model eksik tanımlandı veya çözüm alanı sınırsız.")
                 else:
-                    st.error("Optimizasyon için uygun bir çözüm bulunamadı.")
-            else:
-                st.warning(f"'{secilen_ay}' sütunu 'FY26 Plan' dosyasında bulunamadı.")
-        else:
-            st.warning("Lütfen önce Dashboard ekranından 'FY26 Plan' dosyasını yükleyin.")
+                    st.error("Optimizasyon tamamlanamadı. Durum: UNKNOWN")
