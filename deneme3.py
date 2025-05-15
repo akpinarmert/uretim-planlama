@@ -292,9 +292,7 @@ elif page == "Takvim Tabanlı Planlama":
 
                 # Optimizasyonu çalıştır
                 status = solver.Solve()
-                # stdout'u eski haline getir
-                sys.stdout = sys.__stdout__
-
+               
                 # Çözüm Durumunu Kontrol Et
                 if status == pywraplp.Solver.OPTIMAL:
                     st.success("Optimizasyon başarıyla tamamlandı!")
