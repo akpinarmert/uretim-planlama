@@ -248,8 +248,8 @@ elif page == "Takvim Tabanlı Planlama":
                 cihaz_tipleri = plan_verileri["cihaz_kodu"].tolist()
                 günlük_hedefler = plan_verileri["günlük_hedef"].tolist()
 
-                # Her cihaz tipi için günlük üretim miktarları (0 ile 1634 arasında)
-                uretim_miktarlari = {tip: solver.IntVar(0, 1634, f"miktar_{tip}") for tip in cihaz_tipleri}
+                # Cihaz tipleri için günlük üretim miktarlarını bağımsız olarak tanımlayın
+                uretim_miktarlari = {gun: {tip: solver.IntVar(0, 1634, f"miktar_{tip}_{gun}") for tip in cihaz_tipleri} for gun in range(toplam_calisma_gunu)}
 
                 # Boolean değişkenler: Cihaz tipi o gün üretiliyor mu?
                 uretiliyor_mu = {tip: solver.BoolVar(f"uretiliyor_mu_{tip}") for tip in cihaz_tipleri}
@@ -272,23 +272,23 @@ elif page == "Takvim Tabanlı Planlama":
                         # Eğer üretim miktarı >= 1 ise, boolean değişken 1 olmalı
                         solver.Add(uretim_miktarlari[tip] >= 1 - 1634 * (1 - uretiliyor_mu[tip]))
                         solver.Add(uretim_miktarlari[tip] <= 1634 * uretiliyor_mu[tip])
-                    # Solver için logları etkinleştir
-                    solver.EnableOutput()
-                    # Günlük üretim hedefi için esnek bir aralık
-                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) >= 1600)  # Alt sınır
-                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) <= 1650)  # Üst sınır
+                    # Günlük üretim miktarları ve tip değişikliklerini optimize etmek için kısıtlar
+                    for gun in range(toplam_calisma_gunu):  # Günlük üretim planı
+                        # Günlük toplam üretim kısıtı
+                        solver.Add(solver.Sum(uretim_miktarlari[gun][tip] for tip in cihaz_tipleri) >= 1600)  # Alt sınır
+                        solver.Add(solver.Sum(uretim_miktarlari[gun][tip] for tip in cihaz_tipleri) <= 1650)  # Üst sınır
 
-                    # Tip değişiklikleri için maksimum sınır
-                    max_tip_degisim = 10  # Maksimum tip değişikliği sayısı
-                    solver.Add(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)) <= max_tip_degisim)
-
-                    # Her cihaz tipi için herhangi bir üretim sınırlaması olmadan toplam üretimi kontrol et
-                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) == 1634)
+                    # Günler arasında tip değişikliklerini kontrol edin
+                    for gun in range(1, toplam_calisma_gunu):  # İlk gün için tip değişikliği kontrol edilmez
+                        for tip in cihaz_tipleri:
+                            # Bir önceki gün ile aynı mı kontrol et
+                            solver.Add(tip_degisim[tip][gun] >= uretiliyor_mu[gun][tip] - uretiliyor_mu[gun - 1][tip])
+                            solver.Add(tip_degisim[tip][gun] >= uretiliyor_mu[gun - 1][tip] - uretiliyor_mu[gun][tip])
 
                     # Aylık hedefler için tolerans
                     tolerance = 0.05  # %5 tolerans
                     for tip, hedef in zip(cihaz_tipleri, günlük_hedefler):
-                        aylik_toplam = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
+                        aylik_toplam = solver.Sum(uretim_miktarlari[gun][tip] for gun in range(toplam_calisma_gunu))
                         solver.Add(aylik_toplam >= hedef * (1 - tolerance))  # Alt sınır
                         solver.Add(aylik_toplam <= hedef * (1 + tolerance))  # Üst sınır
 
