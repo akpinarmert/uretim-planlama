@@ -274,9 +274,9 @@ elif page == "Takvim Tabanlı Planlama":
                 solver.Add(toplam_uretim == 1634)  # Günlük toplam hedef
     
                 # Tip değişikliği kısıtı: bir cihaz tipi üretildiyse, "tip_degisim" değişkeni 1 olur
-                # Bu değişken bir BoolVar olduğu için doğruluğunu garanti ediyoruz
-                solver.Add(uretim_miktarlari[tip] >= 1).OnlyEnforceIf(tip_degisim[tip])
-                solver.Add(uretim_miktarlari[tip] == 0).OnlyEnforceIf(tip_degisim[tip].Not())
+                # Eğer üretim miktarı >= 1 ise, tip_degisim[tip] değişkeni 1 olmalı
+                solver.Add(uretim_miktarlari[tip] >= 1 - 1634 * (1 - tip_degisim[tip]))
+                solver.Add(uretim_miktarlari[tip] <= 1634 * tip_degisim[tip])
                 
                 # Çözümü çalıştır
                 status = solver.Solve()
