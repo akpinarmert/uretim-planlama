@@ -282,10 +282,8 @@ elif page == "Takvim Tabanlı Planlama":
                     max_tip_degisim = 10  # Maksimum tip değişikliği sayısı
                     solver.Add(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)) <= max_tip_degisim)
 
-                    # Üretim miktarları için daha geniş sınırlar
-                    for tip in cihaz_tipleri:
-                        solver.Add(uretim_miktarlari[tip] >= 100)  # Minimum üretim miktarı
-                        solver.Add(uretim_miktarlari[tip] <= 1650)  # Maksimum üretim miktarı
+                    # Her cihaz tipi için herhangi bir üretim sınırlaması olmadan toplam üretimi kontrol et
+                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) == 1634)
 
                     # Aylık hedefler için tolerans
                     tolerance = 0.05  # %5 tolerans
