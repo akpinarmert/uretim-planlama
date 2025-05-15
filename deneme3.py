@@ -273,10 +273,10 @@ elif page == "Takvim Tabanlı Planlama":
                 toplam_uretim = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
                 solver.Add(toplam_uretim == 1634)  # Günlük toplam hedef
     
-                    # Tip değişikliği kısıtı: bir cihaz tipi üretildiyse, "tip_degisim" değişkeni 1 olur
-                    # Bu değişken bir BoolVar olduğu için doğruluğunu garanti ediyoruz
-                    solver.Add(uretim_miktarlari[tip] >= 1).OnlyEnforceIf(tip_degisim[tip])
-                    solver.Add(uretim_miktarlari[tip] == 0).OnlyEnforceIf(tip_degisim[tip].Not())
+                # Tip değişikliği kısıtı: bir cihaz tipi üretildiyse, "tip_degisim" değişkeni 1 olur
+                # Bu değişken bir BoolVar olduğu için doğruluğunu garanti ediyoruz
+                solver.Add(uretim_miktarlari[tip] >= 1).OnlyEnforceIf(tip_degisim[tip])
+                solver.Add(uretim_miktarlari[tip] == 0).OnlyEnforceIf(tip_degisim[tip].Not())
                 
                 # Çözümü çalıştır
                 status = solver.Solve()
