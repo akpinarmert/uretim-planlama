@@ -313,9 +313,9 @@ elif page == "Takvim Tabanlı Planlama":
                     st.warning("Geçici bir çözüm bulundu, ancak optimize edilmedi.")
                 elif status == pywraplp.Solver.INFEASIBLE:
                     st.error("Kısıtlar çelişkili olduğu için çözüm bulunamadı.")
-                    infeasibility_report = solver.InfeasibilityReport()
-                    st.write("Kısıt Uyumsuzluk Raporu:")
-                    st.code(infeasibility_report)
+                    # Enable logging to debug infeasibility
+                    solver.EnableOutput()  # Prints detailed logs
+                    st.write("Lütfen logları kontrol edin ve kısıtları gözden geçirin.")
                 elif status == pywraplp.Solver.UNBOUNDED:
                     st.error("Model eksik tanımlandı veya çözüm alanı sınırsız.")
                 else:
