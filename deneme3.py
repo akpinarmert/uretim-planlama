@@ -272,6 +272,8 @@ elif page == "Takvim Tabanlı Planlama":
                         # Eğer üretim miktarı >= 1 ise, boolean değişken 1 olmalı
                         solver.Add(uretim_miktarlari[tip] >= 1 - 1634 * (1 - uretiliyor_mu[tip]))
                         solver.Add(uretim_miktarlari[tip] <= 1634 * uretiliyor_mu[tip])
+                    # Solver için logları etkinleştir
+                    solver.EnableOutput()
                     # Günlük üretim hedefi için esnek bir aralık
                     solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) >= 1600)  # Alt sınır
                     solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) <= 1650)  # Üst sınır
