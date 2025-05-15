@@ -275,10 +275,10 @@ elif page == "Takvim Tabanlı Planlama":
                         solver.Add(tip_degisim[kod][gun] >= uretiliyor_mu[gun][kod] - uretiliyor_mu[gun - 1][kod])
                         solver.Add(tip_degisim[kod][gun] >= uretiliyor_mu[gun - 1][kod] - uretiliyor_mu[gun][kod])
 
-                # Aylık hedefler için tolerans
-                tolerance = 0.05  # %5 tolerans
-                for kod, hedef in zip(cihaz_kodlari, günlük_hedefler):
-                    aylik_toplam = solver.Sum(uretim_miktarlari[gun][kod] for gun in range(toplam_calisma_gunu))
+                # Ekstra günlere izin vererek aylık hedefi kontrol et
+                ekstra_gunler = toplam_calisma_gunu + 5  # 5 ek gün tanımlandı
+                for kod, hedef in zip(cihaz_kodlari, aylik_hedefler.values()):
+                    aylik_toplam = solver.Sum(uretim_miktarlari[gun][kod] for gun in range(ekstra_gunler))
                     solver.Add(aylik_toplam >= hedef * (1 - tolerance))  # Alt sınır
                     solver.Add(aylik_toplam <= hedef * (1 + tolerance))  # Üst sınır
 
