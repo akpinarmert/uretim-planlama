@@ -275,7 +275,8 @@ elif page == "Takvim Tabanlı Planlama":
 
                 # Aylık hedeflere uygunluğu kontrol etmek için kısıtlar
                 for tip, hedef in zip(cihaz_tipleri, günlük_hedefler):
-                    aylik_toplam = solver.Sum(uretim_miktarlari[tip] for tip in range(toplam_calisma_gunu))
+                    # HATA DÜZELTİLDİ: Doğru anahtarlarla iterasyon yapılır
+                    aylik_toplam = solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri)
                     solver.Add(aylik_toplam == hedef)
 
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
