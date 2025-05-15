@@ -242,16 +242,13 @@ elif page == "Takvim Tabanlı Planlama":
                 if secilen_ay in st.session_state.df_plan.columns:
                     plan_verileri = st.session_state.df_plan[["cihaz_kodu", secilen_ay]]
 
-                # Çalışma günleri sayısı (örneğin, bir ayda 20 gün çalışılıyor)
-                toplam_calisma_gunu = 20  # Kullanıcı tarafından ayarlanabilir
+                    # Çalışma günleri sayısı (örneğin, bir ayda 20 gün çalışılıyor)
+                    toplam_calisma_gunu = 20  # Kullanıcı tarafından ayarlanabilir
 
-                # Günlük hedef sütununu oluştur
-                plan_verileri["günlük_hedef"] = plan_verileri[secilen_ay] / toplam_calisma_gunu
+                    # Günlük hedef sütununu oluştur
+                    plan_verileri["günlük_hedef"] = plan_verileri[secilen_ay] / toplam_calisma_gunu
                 else:
                     st.error(f"Seçilen ay '{secilen_ay}' plan dosyasında bulunamadı.")
-                
-                # Optimizasyon için "cihaz_kodu" ve günlük hedefleri kullan
-                from ortools.linear_solver import pywraplp
 
                 # Optimizasyon Modeli
                 solver = pywraplp.Solver.CreateSolver('SCIP')
