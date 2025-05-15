@@ -261,12 +261,12 @@ elif page == "Takvim Tabanlı Planlama":
                 # Günlük üretim miktarları ve tip değişikliklerini optimize etmek için kısıtlar
                 for gun in range(toplam_calisma_gunu):  # Günlük üretim planı
                     # Günlük toplam üretim kısıtı
-                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) == 1634)
+                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) >= 1600)  # Alt sınır
+                    solver.Add(solver.Sum(uretim_miktarlari[tip] for tip in cihaz_tipleri) <= 1650)  # Üst sınır
 
                     # Tip değişikliklerini kontrol etmek için kısıtlar
                     for tip in cihaz_tipleri:
                         if gun > 0:  # İlk gün için tip değişikliği kontrol edilmez
-                            solver.Add(tip_degisim[tip][gun] >= uretiliyor_mu[tip] - uretiliyor_mu[tip])
                             solver.Add(tip_degisim[tip][gun] >= uretiliyor_mu[tip] - uretiliyor_mu[tip])
 
                         # Eğer üretim miktarı >= 1 ise, boolean değişken 1 olmalı
@@ -296,6 +296,7 @@ elif page == "Takvim Tabanlı Planlama":
 
                     # Amaç fonksiyonu: Tip değişikliklerini minimize et
                     solver.Minimize(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)))
+                    
                 # Aylık hedeflere uygunluğu kontrol etmek için kısıtlar
                 for tip, hedef in zip(cihaz_tipleri, günlük_hedefler):
                     # Doğru anahtarlarla iterasyon yapılır
@@ -304,9 +305,22 @@ elif page == "Takvim Tabanlı Planlama":
 
                 # Amaç fonksiyonu: Tip değişikliklerini minimize et
                 solver.Minimize(solver.Sum(tip_degisim[tip][gun] for tip in cihaz_tipleri for gun in range(toplam_calisma_gunu)))
-                
-                # Optimizasyon Modeli
+
+
+                # Solver için logları Streamlit'e yönlendirme
+                import io
+                import sys
+
+                log_capture_string = io.StringIO()  # Logları yakalamak için StringIO nesnesi
+                sys.stdout = log_capture_string     # stdout'u log yakalamaya yönlendir
+
+                # Optimizasyonu çalıştır
                 status = solver.Solve()
+                # stdout'u eski haline getir
+                sys.stdout = sys.__stdout__
+
+                # Logları al
+                solver_logs = log_capture_string.getvalue()
 
                 # Çözüm Durumunu Kontrol Et
                 if status == pywraplp.Solver.OPTIMAL:
